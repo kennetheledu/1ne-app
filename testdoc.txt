@@ -1,0 +1,28 @@
+1. signup ✅
+2. login ✅
+3. session persistence ✅
+4. admin routing ✅
+
+relationship
+1. invite code ✅
+2. unlinking ✅
+3. partner page ✅
+
+tasks
+1. multiple submissions ❌
+2. approvals ❌
+3. rejections ❌
+4. surprise tasks ✅
+5. long-term expiry - i cant test
+
+favors
+1.requests - cant work due to task bug
+2. counters - cant work due to task bug
+3. negotiation threads - cant work due to task bug
+4. redemption deduction - cant work due to task bug
+last i checked, they actually work, they are just currently blocked by the task bug.
+
+wallet
+1. decay - from last test before task bug ✅
+2. monthly cap - cant test due to task bug
+3. transaction logs ✅

@@ -1,0 +1,103 @@
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-rose-50: #fff1f2;
+  --color-rose-100: #ffe4e6;
+  --color-rose-200: #fecdd3;
+  --color-rose-300: #fda4af;
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+
+  --color-pink-50: #fdf2f8;
+  --color-pink-100: #fce7f3;
+  --color-pink-200: #fbcfe8;
+  --color-pink-300: #f9a8d4;
+  --color-pink-400: #f472b6;
+  --color-pink-500: #ec4899;
+
+  --color-lavender-50: #f5f3ff;
+  --color-lavender-100: #ede9fe;
+  --color-lavender-200: #ddd6fe;
+  --color-lavender-300: #c4b5fd;
+  --color-lavender-400: #a78bfa;
+
+  --color-mint-50: #ecfdf5;
+  --color-mint-100: #d1fae5;
+  --color-mint-200: #a7f3d0;
+  --color-mint-300: #6ee7b7;
+
+  --color-peach-50: #fff7ed;
+  --color-peach-100: #ffedd5;
+  --color-peach-200: #fed7aa;
+  --color-peach-300: #fdba74;
+
+  --font-display: "Quicksand", "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-body: "Nunito", ui-rounded, system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #fde2f3 0%, transparent 60%),
+      radial-gradient(1000px 600px at 110% 10%, #e0e7ff 0%, transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, #dcfce7 0%, transparent 60%),
+      #fff7fb;
+    color: #3b2a4a;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+  .gradient-pastel {
+    background-image: linear-gradient(135deg, #fbcfe8 0%, #ddd6fe 50%, #a7f3d0 100%);
+  }
+  .gradient-rose {
+    background-image: linear-gradient(135deg, #fda4af 0%, #f472b6 60%, #c4b5fd 100%);
+  }
+  .gradient-mint {
+    background-image: linear-gradient(135deg, #a7f3d0 0%, #bae6fd 100%);
+  }
+  .gradient-peach {
+    background-image: linear-gradient(135deg, #fed7aa 0%, #fecdd3 100%);
+  }
+  .shadow-soft {
+    box-shadow: 0 10px 30px -12px rgba(244, 63, 94, 0.25),
+      0 4px 12px -4px rgba(139, 92, 246, 0.15);
+  }
+  .shadow-cute {
+    box-shadow: 0 8px 24px -8px rgba(236, 72, 153, 0.35);
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+}
+
+/* Floating blob animation */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(4deg); }
+}
+.animate-floaty { animation: floaty 6s ease-in-out infinite; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+

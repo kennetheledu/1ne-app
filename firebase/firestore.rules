@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function myUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isLinked(uid) {
+      return signedIn() &&
+        myUser().relationshipId != null &&
+        exists(/databases/$(database)/documents/relationships/$(myUser().relationshipId)) &&
+        (
+          get(/databases/$(database)/documents/relationships/$(myUser().relationshipId)).data.userA == uid ||
+          get(/databases/$(database)/documents/relationships/$(myUser().relationshipId)).data.userB == uid
+        );
+    }
+
+    function canReadOwner(uid) {
+      return isSelf(uid) || isLinked(uid);
+    }
+
+    match /users/{uid} {
+      allow read: if canReadOwner(uid);
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if isSelf(uid)
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
+    }
+
+    match /relationships/{relId} {
+      allow read: if signedIn() &&
+        (resource.data.userA == request.auth.uid || resource.data.userB == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /wallets/{walletId} {
+      allow read: if signedIn() && canReadOwner(resource.data.ownerUid);
+      allow create, update, delete: if false;
+    }
+
+    match /transactions/{txnId} {
+      allow read: if signedIn() && canReadOwner(resource.data.ownerUid);
+      allow create, update, delete: if false;
+    }
+
+    match /monthlySnapshots/{snapshotId} {
+      allow read: if signedIn() && canReadOwner(resource.data.ownerUid);
+      allow create, update, delete: if false;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn() && canReadOwner(resource.data.ownerUid);
+      allow create, update, delete: if false;
+    }
+
+    match /streaks/{streakId} {
+      allow read: if signedIn() && canReadOwner(resource.data.ownerUid);
+      allow create, update, delete: if false;
+    }
+
+    match /aiTaskPools/{poolId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /favorRequests/{requestId} {
+      allow read: if signedIn() &&
+        (resource.data.requesterUid == request.auth.uid ||
+         resource.data.reviewerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /negotiations/{negotiationId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /threadMessages/{messageId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /agreements/{agreementId} {
+      allow read: if signedIn() &&
+        (resource.data.requesterUid == request.auth.uid ||
+         resource.data.reviewerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /auditLogs/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+      allow create, delete: if false;
+    }
+  }
+}
