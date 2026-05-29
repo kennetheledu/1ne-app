@@ -14,8 +14,10 @@ import {
   type User,
   type Unsubscribe,
 } from "firebase/auth";
-import { auth } from "./firebaseClient";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "./firebaseClient";
 import type { AuthUser } from "./firebaseTypes";
+import { linkPartner } from "./firebaseCallables";
 
 // ============================================================================
 // AUTH HELPERS
@@ -62,13 +64,64 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   displayName: string,
+  inviteCodeToJoin?: string,
 ): Promise<void> {
   try {
     console.log(`[Auth] Attempting sign-up for ${email}...`);
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    if (userCredential.user) {
-      await updateProfile(userCredential.user, { displayName });
-      console.log(`[Auth] Sign-up and profile update successful for UID: ${userCredential.user.uid}`);
+    const user = userCredential.user;
+
+    if (user) {
+      // 1. Update the Auth Profile
+      await updateProfile(user, { displayName });
+
+      // 2. Generate a random 6-char uppercase string for the user's invite code
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      const inviteCode = Array.from({ length: 6 }, () => 
+        chars.charAt(Math.floor(Math.random() * chars.length))
+      ).join("");
+      
+      const role = inviteCodeToJoin ? "partner" : "admin";
+
+      // 3. Create User Document in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        role,
+        inviteCode,
+        coupleId: null,
+        partnerId: null,
+        displayName: displayName || "",
+        nickname: "",
+        partnerNickname: "",
+        currentStreak: 0,
+        longestStreak: 0,
+        lastStreakDate: "",
+        createdAt: serverTimestamp(),
+      });
+
+      // 4. Create Wallet Document
+      await setDoc(doc(db, "wallets", user.uid), {
+        uid: user.uid,
+        totalPoints: 0,
+        monthlyRedeemed: 0,
+        lastDecayMonth: "",
+      });
+
+      // 5. Create Streak Document
+      await setDoc(doc(db, "streaks", user.uid), {
+        uid: user.uid,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastStreakDate: "",
+      });
+
+      // 6. Link partner if joining via an existing invite code
+      if (inviteCodeToJoin) {
+        await linkPartner(user.uid, inviteCodeToJoin);
+      }
+
+      console.log(`[Auth] Sign-up and all Firestore docs created for UID: ${user.uid}`);
     }
   } catch (error: any) {
     console.error(`[Auth] Sign-up Failed: [${error.code}] ${error.message}`);
