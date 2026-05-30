@@ -77,8 +77,15 @@ export async function getPartner(uid: string): Promise<UserDoc | null> {
 // ============================================================================
 
 export async function getWallet(uid: string): Promise<WalletDoc> {
-  const snap = await getDoc(doc(db, "wallets", uid));
-  if (!snap.exists()) throw new Error("Wallet not found");
+  const walletRef = doc(db, "wallets", uid);
+  const snap = await getDoc(walletRef);
+  if (!snap.exists()) {
+    const initialData = { 
+      uid, totalPoints: 0, monthlyRedeemed: 0, lastDecayMonth: "" 
+    };
+    await setDoc(walletRef, initialData);
+    return initialData as WalletDoc;
+  }
   return snap.data() as WalletDoc;
 }
 
@@ -333,16 +340,19 @@ export const toggleReaction = toggleThreadReaction;
 export async function getFavorRequests(uid: string): Promise<FavorRequestDoc[]> {
   const q = query(collection(db, "favorRequests"), where("uid", "==", uid));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
+  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
+  return Array.isArray(results) ? results : [];
 }
 
 export async function getFavorRequestsToReview(uid: string): Promise<FavorRequestDoc[]> {
   const user = await getMe();
+  if (!user || !user.coupleId) return [];
   const q = query(collection(db, "favorRequests"), where("coupleId", "==", user.coupleId));
   const snap = await getDocs(q);
-  return snap.docs
+  const results = snap.docs
     .filter(d => d.data().uid !== uid)
     .map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
+  return Array.isArray(results) ? results : [];
 }
 
 export async function getFavorRequest(favorRequestId: string): Promise<FavorRequestDoc> {

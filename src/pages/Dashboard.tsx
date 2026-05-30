@@ -49,7 +49,7 @@ export function Dashboard() {
       </motion.div>
       {me.role === "admin" && <RoleBanner role={me.role} />}
       <div className="grid grid-cols-3 gap-3">
-        <Stat icon={<Coins className="text-amber-500" size={18} />} label="Balance" value={wallet.balance} tone="amber" />
+        <Stat icon={<Coins className="text-amber-500" size={18} />} label="Balance" value={wallet.totalPoints ?? 0} tone="amber" />
         <Stat icon={<Gift className="text-pink-500" size={18} />} label="Cap left" value={cap.remaining} tone="pink" />
         <Stat icon={<Flame className="text-violet-500" size={18} />} label="Streak" value={streak?.current ?? 0} tone="violet" />
       </div>

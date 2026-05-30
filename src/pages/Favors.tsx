@@ -51,13 +51,14 @@ function FavorsContent() {
   useEffect(() => {
     async function load() {
       if (!me) return;
+      setLoading(true);
       try {
         const [all, review] = await Promise.all([
           getFavorRequests(me.uid),
           getFavorRequestsToReview(me.uid)
         ]);
-        setAllFavors(all || []);
-        setToReview(review || []);
+        setAllFavors(Array.isArray(all) ? all : []);
+        setToReview(Array.isArray(review) ? review : []);
       } catch (err) {
         console.error("[Favors] Load error:", err);
         setError("Failed to load favors. Please try again.");
@@ -68,7 +69,8 @@ function FavorsContent() {
     load();
   }, [me]);
 
-  const active = (allFavors || []).filter(
+  const safeFavors = Array.isArray(allFavors) ? allFavors : [];
+  const active = safeFavors.filter(
     (f) => f && (f.status === "pending_review" || f.status === "countered")
   );
 
