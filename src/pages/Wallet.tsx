@@ -32,9 +32,8 @@ export function Wallet() {
       <WalletHero wallet={wallet} partnerName={partner ? <Link to="/dashboard/partner" className="font-semibold text-rose-700">{partner.displayName}</Link> : null} adminLocked={adminLocked} />
       <div className="grid grid-cols-2 gap-3">
         <Card className="p-4"><div className="text-xs uppercase tracking-wide font-bold text-rose-400">Lifetime decayed</div><div className="font-display text-3xl font-extrabold text-orange-600 mt-1">{wallet.lifetimeDecayed}</div><div className="text-xs text-gray-500 mt-1">20% monthly rollover</div></Card>
-        <Card className="p-4"><div className="text-xs uppercase tracking-wide font-bold text-rose-400">Cap remaining</div><div className="font-display text-3xl font-extrabold text-emerald-600 mt-1">{cap.remaining}</div><div className="text-xs text-gray-500 mt-1">Out of {cap.cap} monthly</div></Card>
+        <Card className="p-4"><div className="text-xs uppercase tracking-wide font-bold text-rose-400">Cap remaining</div><div className="font-display text-xl font-extrabold text-emerald-600 mt-1">{cap.used} used · {cap.remaining} left</div><div className="text-xs text-gray-500 mt-1">Out of {cap.cap} monthly</div></Card>
       </div>
-      {!adminLocked && <Card><CardHeader title="Demo controls" subtitle="Cloud Functions only in production" /><Button variant="outline" fullWidth onClick={() => { try { simulateMonthlyDecay(me.uid); } catch {} }}><RefreshCcw size={16} /> Simulate month</Button></Card>}
       {/* Partner wallet removed — partner balances are private */}
       <Card><CardHeader title="Transaction history" /><TransactionList transactions={transactions} /></Card>
       <Card><CardHeader title="Recent decay" /><TransactionList transactions={decayHistory} emptyLabel="No decay applied yet." /></Card>

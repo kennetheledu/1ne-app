@@ -23,11 +23,11 @@ export interface CapProgress {
  * No backend call; pure computation.
  */
 export function getMonthlyCapProgress(wallet: WalletDoc): CapProgress {
-  const used = wallet.monthlyRedeemed ?? 0;
-  const cap = wallet.monthlyCap ?? 100;
-  const remaining = Math.max(0, cap - used);
-  const percentUsed = cap > 0 ? Math.round((used / cap) * 100) : 0;
-  return { used, cap, remaining, percentUsed };
+  const monthlyRedeemed = wallet?.monthlyRedeemed ?? 0;
+  const monthlyCap = 10;
+  const remaining = monthlyCap - monthlyRedeemed;
+  const percentUsed = monthlyCap > 0 ? Math.round((monthlyRedeemed / monthlyCap) * 100) : 0;
+  return { used: monthlyRedeemed, cap: monthlyCap, remaining, percentUsed };
 }
 
 // ============================================================================

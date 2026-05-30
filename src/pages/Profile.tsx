@@ -50,7 +50,10 @@ export function Profile() {
           <Row
             icon={<Calendar size={14} />}
             label="Joined"
-            value={new Date(me.createdAt).toLocaleString()}
+            value={
+              (me.createdAt?.toDate ? me.createdAt.toDate() : new Date(me.createdAt))
+                .toLocaleDateString()
+            }
           />
         </div>
       </Card>

@@ -80,7 +80,10 @@ function LogItem({ log }: { log: AuditLogDoc }) {
         <div className="text-[11px] text-gray-500 truncate">by {actor?.displayName ?? log.actor}</div>
       </div>
       <div className="text-[10px] text-gray-400 font-semibold shrink-0">
-        {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        {
+          (log.createdAt?.toDate ? log.createdAt.toDate() : new Date(log.createdAt))
+            .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        }
       </div>
     </li>
   );

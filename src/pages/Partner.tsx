@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Copy, Check, RefreshCcw, Link as LinkIcon, Unlink, Gift, Flame, Trophy } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -18,12 +18,18 @@ import {
 
 export function Partner() {
   const me = useMe();
-  const partner = me ? getPartner(me) : null;
+  const [partner, setPartner] = useState<any>(null);
   const partnerStreak = partner ? getStreak(partner.uid) : null;
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ kind: "success" | "error" | "info"; msg: string } | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (me?.partnerId) {
+      getUser(me.partnerId).then(setPartner).catch(console.error);
+    }
+  }, [me?.partnerId]);
 
   if (!me) {
     return (
@@ -120,7 +126,7 @@ export function Partner() {
                 💞
               </motion.div>
               <div className="font-display text-2xl font-extrabold">
-                You and {partner.displayName}
+                You and {partner?.displayName || partner?.nickname || "Your partner"}
               </div>
               <div className="text-white/90 text-sm mt-1">
                 are officially 1ne!
@@ -130,7 +136,7 @@ export function Partner() {
                 <div className="flex-1 flex items-center justify-center">
                   <Heart size={22} fill="white" className="text-white" />
                 </div>
-                <Avatar name={partner.displayName} />
+                <Avatar name={partner?.displayName || partner?.nickname || "Your partner"} />
               </div>
             </div>
 
@@ -140,12 +146,16 @@ export function Partner() {
                 subtitle="What's shared between you two"
               />
               <div className="space-y-2.5">
-                <InfoRow label="Name" value={partner.displayName} />
+                <InfoRow label="Name" value={partner?.displayName || partner?.nickname || "Your partner"} />
                 <InfoRow label="Email" value={partner.email} />
                 <InfoRow label="Role" value={partner.role === "admin" ? "Admin" : "Member"} />
                 <InfoRow
                   label="Joined"
-                  value={new Date(partner.createdAt).toLocaleDateString()}
+                  value={
+                    partner?.createdAt 
+                      ? (partner.createdAt.toDate ? partner.createdAt.toDate() : new Date(partner.createdAt)).toLocaleDateString()
+                      : "—"
+                  }
                 />
               </div>
               {adminLocked && (

@@ -58,7 +58,12 @@ function LogEntry({ log }: { log: AuditLogDoc }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-mono text-xs font-bold text-slate-800">{log.action}</div>
-        <div className="text-[11px] text-slate-500 truncate">by {actor?.displayName ?? log.actor} · {new Date(log.createdAt).toLocaleString()}</div>
+        <div className="text-[11px] text-slate-500 truncate">
+          by {actor?.displayName ?? log.actor} · {
+            (log.createdAt?.toDate ? log.createdAt.toDate() : new Date(log.createdAt))
+              .toLocaleDateString()
+          }
+        </div>
       </div>
     </div>
   );

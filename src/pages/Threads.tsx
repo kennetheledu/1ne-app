@@ -387,7 +387,10 @@ function FavorNegotiationThread({
                           {msg.text}
                         </div>
                         <div className="text-[11px] text-gray-400 mt-1 px-1">
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {
+                            (msg.createdAt?.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt))
+                              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          }
                         </div>
                         {Object.keys(msg.reactions).length > 0 && (
                           <div className="flex gap-1 mt-1 flex-wrap text-xs">
