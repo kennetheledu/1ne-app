@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircle, ChevronDown, ChevronUp, Send, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader } from "../components/ui/Card";
@@ -8,7 +8,7 @@ import { useMe } from "../lib/useMe";
 import { useAllTasks } from "../lib/useTasks";
 import { useThreadMessages, useThreads } from "../lib/useThreads";
 import { sendThreadMessage, toggleReaction, respondToFavorRequest, respondToCounter, getFavorRequest } from "../lib/firebase";
-import type { MessageReaction, ThreadDoc } from "../lib/firebase";
+import type { FavorRequestDoc, MessageReaction, ThreadDoc } from "../lib/firebaseTypes";
 
 export function Threads() {
   const me = useMe();
@@ -96,7 +96,7 @@ function ThreadCard({
 
   const handleReaction = async (msgId: string, reaction: MessageReaction) => {
     try {
-      await toggleReaction(meUid, msgId, reaction);
+      await toggleReaction(meUid, thread.id, msgId, reaction);
     } catch (err) {
       console.error(err);
     }
@@ -224,7 +224,21 @@ function FavorNegotiationThread({
   const [rejectNote, setRejectNote] = useState("");
   const [busy, setBusy] = useState(false);
   const last = messages[messages.length - 1];
-  const favorRequest = thread.linkedRequestId ? getFavorRequest(thread.linkedRequestId) : null;
+  const [favorRequest, setFavorRequest] = useState<FavorRequestDoc | null>(null);
+
+  useEffect(() => {
+    if (thread.linkedRequestId) {
+      async function fetch() {
+        try {
+          const data = await getFavorRequest(thread.linkedRequestId!);
+          setFavorRequest(data);
+        } catch (err) {
+          console.error("[Threads] Error loading favor request:", err);
+        }
+      }
+      fetch();
+    }
+  }, [thread.linkedRequestId]);
 
   const isRequester = favorRequest?.requesterUid === meUid;
   const isReviewer = favorRequest?.reviewerUid === meUid;
@@ -236,7 +250,7 @@ function FavorNegotiationThread({
     if (!message.trim() || busy) return;
     setBusy(true);
     try {
-      sendThreadMessage(meUid, thread.id, message);
+      await sendThreadMessage(meUid, thread.id, message);
       setMessage("");
     } catch (err) {
       console.error(err);
@@ -309,9 +323,9 @@ function FavorNegotiationThread({
     }
   };
 
-  const handleReaction = (msgId: string, reaction: MessageReaction) => {
+  const handleReaction = async (msgId: string, reaction: MessageReaction) => {
     try {
-      toggleReaction(meUid, msgId, reaction);
+      await toggleReaction(meUid, thread.id, msgId, reaction);
     } catch (err) {
       console.error(err);
     }

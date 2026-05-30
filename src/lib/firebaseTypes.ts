@@ -24,7 +24,7 @@ export interface UserDoc {
   displayName: string;
   role: Role;
   inviteCode: string | null;
-  relationshipId: string | null;
+  coupleId: string | null;
   partnerId: string | null;
   createdAt: number;
 }
@@ -58,7 +58,7 @@ export interface NotificationDoc {
 export interface WalletDoc {
   id: string;
   ownerUid: string;
-  relationshipId: string | null;
+  coupleId: string | null;
   balance: number;
   lifetimeEarned: number;
   lifetimeRedeemed: number;
@@ -79,7 +79,7 @@ export interface TransactionDoc {
   id: string;
   walletId: string;
   ownerUid: string;
-  relationshipId: string | null;
+  coupleId: string | null;
   kind: TransactionKind;
   delta: number;
   amount: number;
@@ -97,7 +97,7 @@ export interface MonthlySnapshotDoc {
   id: string;
   walletId: string;
   ownerUid: string;
-  relationshipId: string | null;
+  coupleId: string | null;
   monthKey: string;
   openingBalance: number;
   earned: number;
@@ -125,7 +125,7 @@ export interface TaskDoc {
   status: TaskStatus;
   revealed: boolean;
   requiresApproval: boolean;
-  relationshipId: string | null;
+  coupleId: string | null;
   assignedPartner: string | null;
   submissionLocked: boolean;
   expiresAt: number | null;
@@ -174,7 +174,7 @@ export interface AchievementDoc {
 export interface StreakDoc {
   id: string;
   ownerUid: string;
-  relationshipId: string | null;
+  coupleId: string | null;
   current: number;
   best: number;
   lastCompletionDay: string | null;
@@ -185,7 +185,7 @@ export interface StreakDoc {
 
 export interface FavorRequestDoc {
   id: string;
-  relationshipId: string;
+  coupleId: string;
   requesterUid: string;
   reviewerUid: string;
   title: string;
@@ -205,7 +205,7 @@ export interface FavorRequestDoc {
 export interface NegotiationDoc {
   id: string;
   requestId: string;
-  relationshipId: string;
+  coupleId: string;
   round: number;
   actor: string;
   action: NegotiationAction;
@@ -220,7 +220,7 @@ export interface TaskSubmissionDoc {
   taskId: string;
   submittedBy: string;
   assignedPartner: string;
-  relationshipId: string;
+  coupleId: string;
   threadId: string;
   status: "pending" | "approved" | "rejected" | "countered";
   submissionNote: string;

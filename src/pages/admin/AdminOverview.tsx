@@ -1,13 +1,36 @@
+import { useEffect, useState } from "react";
 import { Activity, ClipboardList, Flame, Link2, Users, WalletCards } from "lucide-react";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { useMe } from "../../lib/useMe";
 import { getAdminStats, getAuditLogs, getUser } from "../../lib/firebase";
+import type { AuditLogDoc, UserDoc } from "../../lib/firebaseTypes";
 
 export function AdminOverview() {
   const me = useMe();
-  if (!me) return null;
-  const stats = getAdminStats(me.uid);
-  const logs = getAuditLogs(6);
+  const [stats, setStats] = useState<any>(null);
+  const [logs, setLogs] = useState<AuditLogDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!me) return;
+    async function load() {
+      try {
+        const [s, l] = await Promise.all([
+          getAdminStats(),
+          getAuditLogs(6)
+        ]);
+        setStats(s);
+        setLogs(l);
+      } catch (err) {
+        console.error("[AdminOverview] Data load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [me]);
+
+  if (!me || loading) return null;
 
   return (
     <div className="space-y-4">
@@ -29,17 +52,32 @@ export function AdminOverview() {
       <Card className="bg-white border-slate-200">
         <CardHeader title="Recent activity" subtitle="Immutable audit stream" />
         <div className="space-y-2">
-          {logs.map((log) => {
-            const actor = getUser(log.actor);
-            return (
-              <div key={log.id} className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                <div className="text-xs font-mono font-bold text-slate-700">{log.action}</div>
-                <div className="text-[11px] text-slate-500 mt-1">by {actor?.displayName ?? log.actor}</div>
-              </div>
-            );
-          })}
+          {logs.map((log) => <RecentLogItem key={log.id} log={log} />)}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function RecentLogItem({ log }: { log: AuditLogDoc }) {
+  const [actor, setActor] = useState<UserDoc | null>(null);
+
+  useEffect(() => {
+    async function fetch() {
+      try {
+        const data = await getUser(log.actor);
+        setActor(data);
+      } catch (err) {
+        console.error("[AdminOverview] Error fetching actor info:", err);
+      }
+    }
+    fetch();
+  }, [log.actor]);
+
+  return (
+    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+      <div className="text-xs font-mono font-bold text-slate-700">{log.action}</div>
+      <div className="text-[11px] text-slate-500 mt-1">by {actor?.displayName ?? log.actor}</div>
     </div>
   );
 }

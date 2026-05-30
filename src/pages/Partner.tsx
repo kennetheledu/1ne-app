@@ -31,8 +31,9 @@ export function Partner() {
     if (!code.trim() || !me) return;
     setBusy(true);
     try {
-      const { partner } = await linkPartner(me.uid, code);
-      setToast({ kind: "success", msg: `Linked with ${partner.displayName} 💞` });
+      const { relationshipId } = await linkPartner(me.uid, code);
+      window.dispatchEvent(new Event("1ne:db-changed"));
+      setToast({ kind: "success", msg: "Linked successfully! 💞" });
       setCode("");
     } catch (err) {
       setToast({
@@ -44,25 +45,36 @@ export function Partner() {
     }
   }
 
-  function onRegenerate() {
+  async function onRegenerate() {
     if (!confirm("Regenerate your invite code? Your old code will stop working.")) return;
     if (!me) return;
     try {
-      regenerateInviteCode(me.uid);
+      await regenerateInviteCode(me.uid);
+      window.dispatchEvent(new Event("1ne:db-changed"));
       setToast({ kind: "success", msg: "New invite code generated" });
     } catch (err) {
+      console.error("[Partner] Regenerate Error:", err);
       setToast({
         kind: "error",
-        msg: err instanceof Error ? err.message : "Failed",
+        msg: err instanceof Error ? err.message : "Failed to regenerate code",
       });
     }
   }
 
-  function onUnlink() {
+  async function onUnlink() {
     if (!confirm("Unlink from your partner? You can re-link anytime with a new code.")) return;
     if (!me) return;
-    unlinkPartner(me.uid);
-    setToast({ kind: "info", msg: "Unlinked" });
+    try {
+      await unlinkPartner(me.uid);
+      window.dispatchEvent(new Event("1ne:db-changed"));
+      setToast({ kind: "info", msg: "Unlinked" });
+    } catch (err) {
+      console.error("[Partner] Unlink Error:", err);
+      setToast({
+        kind: "error",
+        msg: "Failed to unlink partner",
+      });
+    }
   }
 
   async function copyCode() {

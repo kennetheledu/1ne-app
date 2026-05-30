@@ -298,7 +298,7 @@ function TasksContent() {
                     {(["❤️", "😂", "🔥", "🥺", "✨", "👏"] as MessageReaction[]).map((reaction) => (
                       <button 
                         key={reaction} 
-                        onClick={() => run(message.id, () => toggleReaction(me.uid, message.id, reaction))} 
+                        onClick={() => run(message.id, () => toggleReaction(me.uid, threadContext.threadId, message.id, reaction))} 
                         className="text-xs opacity-50 hover:opacity-100"
                         disabled={busy !== null}
                       >

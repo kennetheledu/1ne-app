@@ -1,12 +1,31 @@
+import { useEffect, useState } from "react";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Shield, History, Lock, Zap, ClipboardCheck } from "lucide-react";
 import { CLOUD_FUNCTIONS_OVERVIEW, FIRESTORE_RULES, FIRESTORE_SCHEMA, getAuditLogs, getUser } from "../lib/firebase";
 import { useMe } from "../lib/useMe";
+import type { AuditLogDoc, UserDoc } from "../lib/firebaseTypes";
 
 export function Security() {
   const me = useMe();
-  const logs = getAuditLogs(20);
-  if (!me) return null;
+  const [logs, setLogs] = useState<AuditLogDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const data = await getAuditLogs(20);
+        setLogs(data);
+      } catch (err) {
+        console.error("[Security] Failed to fetch logs:", err);
+        alert("Failed to load security logs.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLogs();
+  }, []);
+
+  if (!me || loading) return null;
 
   return (
     <div className="space-y-4">
@@ -29,10 +48,41 @@ export function Security() {
       </Card>
       <Card>
         <CardHeader title="Audit log" subtitle={`${logs.length} recent events`} />
-        {logs.length === 0 ? <div className="text-center py-6 text-sm text-gray-400"><History className="mx-auto mb-2 opacity-40" size={22} />No activity.</div> : <ul className="space-y-2">{logs.map(log => { const actor = getUser(log.actor); return <li key={log.id} className="flex items-start gap-3 p-3 rounded-2xl bg-rose-50/60 border border-rose-100"><div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shrink-0"><History size={14} className="text-rose-500" /></div><div className="flex-1 min-w-0"><div className="text-xs font-bold text-rose-700 font-mono">{log.action}</div><div className="text-[11px] text-gray-500 truncate">by {actor?.displayName ?? log.actor}</div></div><div className="text-[10px] text-gray-400 font-semibold shrink-0">{new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div></li>; })}</ul>}
+        {logs.length === 0 ? <div className="text-center py-6 text-sm text-gray-400"><History className="mx-auto mb-2 opacity-40" size={22} />No activity.</div> : <ul className="space-y-2">{logs.map(log => <LogItem key={log.id} log={log} />)}</ul>}
       </Card>
       <Card><CardHeader title="Firestore rules" /><pre className="text-[11px] bg-slate-900 text-emerald-200 rounded-2xl p-4 overflow-x-auto whitespace-pre font-mono leading-relaxed">{FIRESTORE_RULES}</pre></Card>
     </div>
+  );
+}
+
+function LogItem({ log }: { log: AuditLogDoc }) {
+  const [actor, setActor] = useState<UserDoc | null>(null);
+
+  useEffect(() => {
+    async function fetch() {
+      try {
+        const data = await getUser(log.actor);
+        setActor(data);
+      } catch (err) {
+        console.error("[Security] Error fetching actor:", err);
+      }
+    }
+    fetch();
+  }, [log.actor]);
+
+  return (
+    <li className="flex items-start gap-3 p-3 rounded-2xl bg-rose-50/60 border border-rose-100">
+      <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shrink-0">
+        <History size={14} className="text-rose-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-bold text-rose-700 font-mono">{log.action}</div>
+        <div className="text-[11px] text-gray-500 truncate">by {actor?.displayName ?? log.actor}</div>
+      </div>
+      <div className="text-[10px] text-gray-400 font-semibold shrink-0">
+        {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </div>
+    </li>
   );
 }
 

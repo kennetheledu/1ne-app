@@ -492,9 +492,8 @@ export async function awardPoints(
   reason?: string,
 ): Promise<{ ok: boolean }> {
   const user = await getUser(uid);
-  const batch = writeBatch(db);
-  batch.set(doc(db, "wallets", uid), { totalPoints: increment(amount) }, { merge: true });
-  batch.add(collection(db, "transactions"), {
+  await updateDoc(doc(db, "wallets", uid), { totalPoints: increment(amount) });
+  await addDoc(collection(db, "transactions"), {
     uid,
     coupleId: user.coupleId,
     type: "earned",
@@ -502,7 +501,6 @@ export async function awardPoints(
     reason: reason || "Awarded points",
     timestamp: serverTimestamp()
   });
-  await batch.commit();
   return { ok: true };
 }
 
@@ -512,12 +510,11 @@ export async function redeemPoints(
   reason?: string,
 ): Promise<{ ok: boolean }> {
   const user = await getUser(uid);
-  const batch = writeBatch(db);
-  batch.update(doc(db, "wallets", uid), {
+  await updateDoc(doc(db, "wallets", uid), {
     totalPoints: increment(-amount),
     monthlyRedeemed: increment(amount)
   });
-  batch.add(collection(db, "transactions"), {
+  await addDoc(collection(db, "transactions"), {
     uid,
     coupleId: user.coupleId,
     type: "spent",
@@ -525,7 +522,6 @@ export async function redeemPoints(
     reason: reason || "Points redeemed",
     timestamp: serverTimestamp()
   });
-  await batch.commit();
   return { ok: true };
 }
 

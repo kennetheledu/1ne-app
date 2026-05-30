@@ -19,6 +19,7 @@ import { AdminLogs } from "./pages/admin/AdminLogs";
 import { AdminAnalytics } from "./pages/admin/AdminAnalytics";
 import { AdminSystem } from "./pages/admin/AdminSystem";
 import { getMe } from "./lib/firebase";
+import type { UserDoc } from "./lib/firebaseTypes";
 
 const ONBOARD_KEY = "1ne.onboarded.v1";
 
@@ -51,7 +52,24 @@ function AdminOnly({ children }: { children: ReactNode }) {
 }
 
 function RoleGate({ role, children }: { role: "user" | "admin"; children: ReactNode }) {
-  const me = getMe();
+  const [me, setMe] = useState<UserDoc | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMe() {
+      try {
+        const data = await getMe();
+        setMe(data);
+      } catch (err) {
+        console.error("[RoleGate] Profile fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMe();
+  }, []);
+
+  if (loading) return null;
   if (!me) return <Navigate to="/auth" replace />;
   if (role === "admin" && me.role !== "admin") return <Navigate to="/dashboard" replace />;
   if (role === "user" && me.role === "admin") return <Navigate to="/dashboard/admin" replace />;
@@ -62,10 +80,29 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const [onboarded, finish] = useOnboardingDone();
   const location = useLocation();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" /></div>;
-  if (!user && !onboarded && location.pathname === "/") return <Onboarding onFinish={finish} />;
+  const [me, setMe] = useState<UserDoc | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  const me = user ? getMe() : null;
+  useEffect(() => {
+    async function fetchMe() {
+      if (!user) {
+        setProfileLoading(false);
+        return;
+      }
+      try {
+        const data = await getMe();
+        setMe(data);
+      } catch (err) {
+        console.error("[AppRoutes] Error fetching profile:", err);
+      } finally {
+        setProfileLoading(false);
+      }
+    }
+    fetchMe();
+  }, [user]);
+
+  if (loading || profileLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" /></div>;
+  if (!user && !onboarded && location.pathname === "/") return <Onboarding onFinish={finish} />;
 
   return (
     <Routes>

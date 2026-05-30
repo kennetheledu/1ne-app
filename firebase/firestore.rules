@@ -16,11 +16,11 @@ service cloud.firestore {
 
     function isLinked(uid) {
       return signedIn() &&
-        myUser().relationshipId != null &&
-        exists(/databases/$(database)/documents/relationships/$(myUser().relationshipId)) &&
+        myUser().coupleId != null &&
+        exists(/databases/$(database)/documents/relationships/$(myUser().coupleId)) &&
         (
-          get(/databases/$(database)/documents/relationships/$(myUser().relationshipId)).data.userA == uid ||
-          get(/databases/$(database)/documents/relationships/$(myUser().relationshipId)).data.userB == uid
+          get(/databases/$(database)/documents/relationships/$(myUser().coupleId)).data.userA == uid ||
+          get(/databases/$(database)/documents/relationships/$(myUser().coupleId)).data.userB == uid
         );
     }
 
