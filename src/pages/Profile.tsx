@@ -31,13 +31,15 @@ export function Profile() {
             {me.displayName}
           </div>
           <div className="text-sm text-rose-500/80 mt-0.5">{me.email}</div>
-          <div className="mt-3 flex justify-center">
-            <RoleBadge role={me.role} />
-          </div>
+          {me.role === "admin" && (
+            <div className="mt-3 flex justify-center">
+              <RoleBadge role={me.role} />
+            </div>
+          )}
         </div>
       </motion.div>
 
-      <RoleBanner role={me.role} />
+      {me.role === "admin" && <RoleBanner role={me.role} />}
 
       <Card>
         <CardHeader title="Account" subtitle="Your profile details" />
@@ -80,12 +82,12 @@ export function Profile() {
               <Sparkles size={16} className="text-rose-500" />
             </div>
             <div className="flex-1">
-              <div className="text-sm font-bold text-rose-700">Member</div>
+              <div className="text-sm font-bold text-rose-700">Member (Standard)</div>
               <div className="text-xs text-gray-500">
                 Standard role. Can link partners and participate in rewards.
               </div>
             </div>
-            <RoleBadge role="user" />
+            <RoleBadge role="member" />
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">

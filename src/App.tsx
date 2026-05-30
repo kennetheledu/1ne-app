@@ -76,7 +76,7 @@ function RoleGate({ role, children }: { role: "user" | "admin"; children: ReactN
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" /></div>;
   if (!me) return <Navigate to="/auth" replace />;
-  if (role === "admin" && me.role !== "admin") return <Navigate to="/dashboard" replace />;
+  if (role === "admin" && me.role !== "admin") return <Navigate to="/home" replace />;
   if (role === "user" && me.role === "admin") return <Navigate to="/dashboard/admin" replace />;
   return <>{children}</>;
 }
@@ -111,8 +111,8 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/auth" element={user ? <Navigate to={me?.role === "admin" ? "/dashboard/admin" : "/dashboard"} replace /> : <Auth />} />
-      <Route path="/" element={<Navigate to={user ? (me?.role === "admin" ? "/dashboard/admin" : "/dashboard") : "/auth"} replace />} />
+      <Route path="/auth" element={user ? <Navigate to={me?.role === "admin" ? "/dashboard/admin" : "/home"} replace /> : <Auth />} />
+      <Route path="/" element={<Navigate to={user ? (me?.role === "admin" ? "/dashboard/admin" : "/home") : "/auth"} replace />} />
 
       <Route path="/dashboard" element={<UserOnly><Layout><Dashboard /></Layout></UserOnly>} />
       <Route path="/dashboard/tasks" element={<UserOnly><Layout><Tasks /></Layout></UserOnly>} />
@@ -136,7 +136,7 @@ function AppRoutes() {
       <Route path="/partner" element={<Navigate to="/dashboard/partner" replace />} />
       <Route path="/profile" element={<Navigate to="/dashboard/profile" replace />} />
       <Route path="/security" element={<Navigate to="/dashboard/security" replace />} />
-      <Route path="*" element={<Navigate to={user ? (me?.role === "admin" ? "/dashboard/admin" : "/dashboard") : "/auth"} replace />} />
+      <Route path="*" element={<Navigate to={user ? (me?.role === "admin" ? "/dashboard/admin" : "/home") : "/auth"} replace />} />
     </Routes>
   );
 }

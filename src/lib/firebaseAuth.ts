@@ -81,7 +81,7 @@ export async function signUpWithEmail(
         chars.charAt(Math.floor(Math.random() * chars.length))
       ).join("");
       
-      const role = inviteCodeToJoin ? "partner" : "admin";
+      const role = inviteCodeToJoin ? "partner" : "member";
 
       // 3. Create User Document in Firestore
       await setDoc(doc(db, "users", user.uid), {
