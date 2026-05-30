@@ -44,6 +44,11 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated();
+    }
+
     match /auditLogs/{logId} {
       allow read: if isAuthenticated() && isAdmin();
       allow write: if isAuthenticated();

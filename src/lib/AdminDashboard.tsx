@@ -30,33 +30,47 @@ export function AdminDashboard() {
 
   useEffect(() => {
     async function fetchAdminData() {
-      const memberQuery = query(collection(db, "users"), where("role", "==", "member"));
-      const taskQuery = query(collection(db, "tasks"), where("status", "==", "active"));
-      const auditQuery = query(collection(db, "auditLogs"), orderBy("timestamp", "desc"), limit(20));
+      try {
+        // Count everyone who isn't an admin as a member to be safe
+        const memberQuery = query(collection(db, "users"), where("role", "!=", "admin"));
+        const taskQuery = query(collection(db, "tasks"), where("status", "==", "active"));
+        const auditQuery = query(collection(db, "auditLogs"), orderBy("timestamp", "desc"), limit(20));
 
-      const [membersSnap, tasksSnap, auditSnap] = await Promise.all([
-        getDocs(memberQuery),
-        getDocs(taskQuery),
-        getDocs(auditQuery)
-      ]);
+        const [membersSnap, auditSnap] = await Promise.all([
+          getDocs(memberQuery),
+          getDocs(auditQuery)
+        ]);
 
-      setStats({ members: membersSnap.size, activeTasks: tasksSnap.size });
-      setLogs(auditSnap.docs.map(d => ({ id: d.id, ...d.data() } as AuditLogDoc)));
-      const memberList = membersSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserDoc));
-      setMembers(memberList);
+        setStats(prev => ({ ...prev, members: membersSnap.size }));
+        const auditData = auditSnap.docs.map(d => ({ id: d.id, ...d.data() } as AuditLogDoc));
+        setLogs(Array.isArray(auditData) ? auditData : []);
+        
+        const memberList = membersSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserDoc));
+        setMembers(memberList);
 
-      const healthStatus = await getSystemHealth();
-      setHealth(healthStatus);
+        const healthStatus = await getSystemHealth();
+        setHealth(healthStatus);
+      } catch (err) {
+        console.error("Admin data fetch failed:", err);
+        setHealth({ status: "Issues detected", details: "Permission denied or network error" });
+      }
     }
-    fetchAdminData();
+    
+    if (me?.role === 'admin') {
+      fetchAdminData();
+    }
 
     // Simplified query to avoid composite index requirements
     const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskDoc));
-      // Filter in memory to prevent crashes if index is missing
-      setAllTasks(docs.filter(t => ["active", "pending", "approved", "rejected"].includes(t.status)));
-    });
+    const unsub = onSnapshot(q, 
+      (snap) => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskDoc));
+        const filtered = docs.filter(t => ["active", "pending", "approved", "rejected"].includes(t.status));
+        setAllTasks(filtered);
+        setStats(prev => ({ ...prev, activeTasks: filtered.filter(t => t.status === 'active').length }));
+      },
+      (err) => console.error("Task listener failed:", err)
+    );
 
     return () => unsub();
   }, []);
@@ -209,7 +223,7 @@ export function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {allTasks.map(task => (
+                {Array.isArray(allTasks) && allTasks.map(task => (
                   <tr key={task.id} className="text-slate-600">
                     <td className="py-4 font-bold truncate max-w-[150px]">{task.title}</td>
                     <td className="py-4 capitalize">{task.type}</td>

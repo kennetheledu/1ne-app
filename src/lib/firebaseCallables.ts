@@ -105,6 +105,13 @@ export async function adminGetMembers(): Promise<UserDoc[]> {
 }
 
 export async function getWalletData(uid: string): Promise<WalletDoc> {
+  const snapUser = await getDoc(doc(db, "users", uid));
+  const userData = snapUser.data() as UserDoc;
+  
+  if (userData?.role === 'admin') {
+    return { uid, totalPoints: 0, monthlyRedeemed: 0, lastDecayMonth: '' };
+  }
+
   const walletRef = doc(db, "wallets", uid);
   const snap = await getDoc(walletRef);
   const now = new Date();
@@ -218,9 +225,12 @@ export async function approveTask(taskId: string, approverName: string) {
 }
 
 export async function getStreakData(uid: string): Promise<StreakDoc | null> {
-  const snap = await getDoc(doc(db, "streaks", uid));
-  if (!snap.exists()) return null;
-  return snap.data() as StreakDoc;
+  try {
+    const snap = await getDoc(doc(db, "streaks", uid));
+    return snap.exists() ? snap.data() as StreakDoc : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function linkPartner(uid: string, inviteCode: string): Promise<{ ok: boolean; relationshipId: string }> {
