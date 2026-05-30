@@ -11,6 +11,7 @@ import {
   signOut,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   updateProfile,
+  sendPasswordResetEmail,
   type User,
   type Unsubscribe,
 } from "firebase/auth";
@@ -135,4 +136,8 @@ export async function signUpWithEmail(
 
 export async function signOutUser(): Promise<void> {
   await signOut(auth);
+}
+
+export async function resetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
 }
