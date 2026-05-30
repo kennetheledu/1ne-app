@@ -19,8 +19,11 @@ service cloud.firestore {
     }
     
     match /users/{uid} {
-      allow read: if isAuth() && (isOwner(uid) || sameCouple(resource.data.coupleId));
-      allow write: if isAuth() && isOwner(uid);
+      allow read: if isAuth();
+      allow write: if isAuth() && (
+        isOwner(uid) || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coupleId', 'partnerId', 'inviteCode'])
+      );
     }
     
     match /wallets/{uid} {

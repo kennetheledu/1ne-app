@@ -48,12 +48,6 @@ function TasksContent() {
   const rawAchievements = useMyAchievements(me?.uid);
   const streak = useStreak(me?.uid);
   const partner = useMemo(() => (me ? getPartner(me) : null), [me]);
-
-  const allTasks = Array.isArray(rawAllTasks) ? rawAllTasks : [];
-  const active = Array.isArray(rawActive) ? rawActive : [];
-  const pending: TaskSubmissionDoc[] = Array.isArray(rawPending) ? rawPending : [];
-  const achievements = Array.isArray(rawAchievements) ? rawAchievements : [];
-
   const [toast, setToast] = useState<{ kind: "success" | "error" | "info"; msg: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("active");
@@ -69,10 +63,13 @@ function TasksContent() {
   const [cType, setCType] = useState<TaskType>("daily");
   const [cDiff, setCDiff] = useState<TaskDifficulty>("easy");
   const [cPts, setCPts] = useState("20");
-
   const threadMessages = useThreadMessages(threadContext?.threadId ?? null);
 
   useEffect(() => {
+    const allTasks = Array.isArray(rawAllTasks) ? rawAllTasks : [];
+    const active = Array.isArray(rawActive) ? rawActive : [];
+    const pending = Array.isArray(rawPending) ? rawPending : [];
+    
     console.log("Task debug", {
       user: me,
       relationship: me?.relationshipId ?? null,
@@ -80,11 +77,16 @@ function TasksContent() {
       active,
       pending,
     });
-  }, [me?.uid, me?.relationshipId, allTasks.length, active.length, pending.length]);
+  }, [me?.uid, me?.relationshipId, rawAllTasks, rawActive, rawPending]);
 
   if (!me) {
     return <TaskSkeleton message="Syncing task session..." />;
   }
+
+  const allTasks = Array.isArray(rawAllTasks) ? rawAllTasks : [];
+  const active = Array.isArray(rawActive) ? rawActive : [];
+  const pending: TaskSubmissionDoc[] = Array.isArray(rawPending) ? rawPending : [];
+  const achievements = Array.isArray(rawAchievements) ? rawAchievements : [];
 
   const isAdmin = me.role === "admin";
   const dailyTasks = active.filter((task) => task.taskType === "daily");

@@ -35,15 +35,6 @@ function FavorsContent() {
   const [pointCost, setPointCost] = useState("");
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (!me) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" />
-      </div>
-    );
-  }
-
   const [allFavors, setAllFavors] = useState<FavorRequestDoc[]>([]);
   const [toReview, setToReview] = useState<FavorRequestDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +59,14 @@ function FavorsContent() {
     }
     load();
   }, [me]);
+
+  if (!me) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" />
+      </div>
+    );
+  }
 
   const safeFavors = Array.isArray(allFavors) ? allFavors : [];
   const active = safeFavors.filter(
