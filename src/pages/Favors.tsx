@@ -13,6 +13,7 @@ import {
   respondToFavorRequest,
   respondToCounter,
   getNegotiationsFor,
+  type NegotiationDoc,
   FAVOR_TIER_POINTS,
   type FavorRequestDoc,
   type FavorTier,
@@ -237,6 +238,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
   useEffect(() => {
     async function fetch() {
       try {
+        if (!request.id) return;
         const data = await getNegotiationsFor(request.id);
         setNegotiations(data || []);
       } catch (err) {
@@ -248,7 +250,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
     fetch();
   }, [request.id]);
 
-  const last = negotiations && negotiations.length > 0 ? negotiations[negotiations.length - 1] : null;
+  const last = Array.isArray(negotiations) && negotiations.length > 0 ? negotiations[negotiations.length - 1] : null;
   const summary = last
     ? last.action === "submit"
       ? `Suggested tier ${last.tier} for ${last.pointCost} pts`
@@ -268,6 +270,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
   const handleAcceptCounter = async () => {
     try {
       await respondToCounter(meUid, request.id, "accept");
+      window.location.reload(); // Quick refresh for state sync
     } catch (err) {
       console.error(err);
     }
@@ -276,6 +279,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
   const handleWithdrawCounter = async () => {
     try {
       await respondToCounter(meUid, request.id, "withdraw");
+      window.location.reload();
     } catch (err) {
       console.error(err);
     }
