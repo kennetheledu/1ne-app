@@ -50,13 +50,12 @@ export function AdminDashboard() {
     }
     fetchAdminData();
 
-    const q = query(
-      collection(db, "tasks"), 
-      where("status", "in", ["active", "pending", "approved", "rejected"]),
-      orderBy("createdAt", "desc")
-    );
+    // Simplified query to avoid composite index requirements
+    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setAllTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskDoc)));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskDoc));
+      // Filter in memory to prevent crashes if index is missing
+      setAllTasks(docs.filter(t => ["active", "pending", "approved", "rejected"].includes(t.status)));
     });
 
     return () => unsub();
@@ -212,7 +211,7 @@ export function AdminDashboard() {
               <tbody className="divide-y divide-slate-50">
                 {allTasks.map(task => (
                   <tr key={task.id} className="text-slate-600">
-                    <td className="py-4 font-bold">{task.title}</td>
+                    <td className="py-4 font-bold truncate max-w-[150px]">{task.title}</td>
                     <td className="py-4 capitalize">{task.type}</td>
                     <td className="py-4">
                       <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${task.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
@@ -243,7 +242,8 @@ export function AdminDashboard() {
             {logs.map(log => (
               <div key={log.id} className="flex gap-4 text-sm border-b border-slate-50 pb-3 last:border-0">
                 <div className="text-slate-400 font-mono text-[10px] w-20">
-                  {log.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {/* Safe check for serverTimestamp which is null on first local sync */}
+                  {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
                 </div>
                 <div className="flex-1">
                   <span className="font-bold text-slate-700">{log.actor}</span>

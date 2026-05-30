@@ -69,7 +69,8 @@ export async function signUpWithEmail(
       ).join("");
       
       // Auto-assign admin role if email matches the corporate domain
-      let role: string = "member";
+      // Explicitly set role as "member" by default
+      let role = "member";
       if (email.toLowerCase().endsWith("@1ne.app")) {
         role = "admin";
       }
