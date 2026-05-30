@@ -343,7 +343,7 @@ function TasksContent() {
 
 function TaskList({ tasks, emptyLabel, busy, onReveal, onSubmit, onThread }: { tasks: TaskDoc[]; emptyLabel: string; busy: string | null; onReveal: (id: string) => void; onSubmit: (id: string) => void; onThread: (id: string) => void }) {
   if (!Array.isArray(tasks) || tasks.length === 0) {
-    return <EmptyCard icon={<Sparkles className="mx-auto mb-2 opacity-40" size={24} />} label={emptyLabel} />;
+    return <EmptyCard icon={<Sparkles className="mx-auto mb-2 opacity-40" size={24} />} label="No tasks yet · Tasks will appear here when your partner assigns them" />;
   }
   return (
     <div className="space-y-3">

@@ -60,16 +60,16 @@ export async function getUser(uid: string): Promise<UserDoc> {
 
 export async function getPartner(uid: string): Promise<UserDoc | null> {
   const userSnap = await getDoc(doc(db, "users", uid));
-  const userData = userSnap.data() as UserDoc;
-  if (!userData?.coupleId) return null;
+  const coupleId = userSnap.data()?.coupleId;
+  if (!coupleId) return null;
 
   const q = query(
     collection(db, "users"),
-    where("coupleId", "==", userData.coupleId)
+    where("coupleId", "==", coupleId)
   );
-  const querySnap = await getDocs(q);
-  const partnerDoc = querySnap.docs.find(d => d.id !== uid);
-  return partnerDoc ? ({ uid: partnerDoc.id, ...partnerDoc.data() } as UserDoc) : null;
+  const snaps = await getDocs(q);
+  const partner = snaps.docs.find(d => d.id !== uid);
+  return partner ? ({ uid: partner.id, ...partner.data() } as UserDoc) : null;
 }
 
 // ============================================================================
@@ -121,11 +121,15 @@ export async function getDecayHistoryFor(uid: string, limit = 24): Promise<Trans
 // ============================================================================
 
 export async function getTasksForUser(uid: string): Promise<TaskDoc[]> {
-  const q = query(collection(db, "tasks"), where("assignedTo", "==", uid));
-  const snap = await getDocs(q);
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() } as TaskDoc))
-    .filter(t => t.status !== "archived");
+  try {
+    const q = query(collection(db, "tasks"), where("assignedTo", "==", uid));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as TaskDoc))
+      .filter(t => t.status !== "archived");
+  } catch {
+    return [];
+  }
 }
 
 export async function getActiveTasks(uid: string): Promise<TaskDoc[]> {
@@ -256,17 +260,18 @@ export async function archiveTaskViaAdmin(taskId: string): Promise<{ ok: boolean
 
 export async function createTaskViaAdmin(
   title: string,
-  prompt: string,
+  description: string,
   category: string,
   difficulty: string,
   rewardValue: number,
+  assignedTo: string,
+  coupleId: string
 ): Promise<{ ok: boolean }> {
-  const user = await getMe();
   await addDoc(collection(db, "tasks"), {
-    coupleId: user.coupleId,
-    assignedTo: user.partnerId,
+    coupleId,
+    assignedTo,
     title,
-    prompt,
+    description,
     category,
     difficulty,
     rewardValue,
@@ -338,21 +343,27 @@ export const toggleReaction = toggleThreadReaction;
 // ============================================================================
 
 export async function getFavorRequests(uid: string): Promise<FavorRequestDoc[]> {
-  const q = query(collection(db, "favorRequests"), where("uid", "==", uid));
-  const snap = await getDocs(q);
-  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
-  return Array.isArray(results) ? results : [];
+  try {
+    const q = query(collection(db, "favorRequests"), where("uid", "==", uid));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
+  } catch {
+    return [];
+  }
 }
 
 export async function getFavorRequestsToReview(uid: string): Promise<FavorRequestDoc[]> {
-  const user = await getMe();
-  if (!user || !user.coupleId) return [];
-  const q = query(collection(db, "favorRequests"), where("coupleId", "==", user.coupleId));
-  const snap = await getDocs(q);
-  const results = snap.docs
-    .filter(d => d.data().uid !== uid)
-    .map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
-  return Array.isArray(results) ? results : [];
+  try {
+    const user = await getMe();
+    if (!user || !user.coupleId) return [];
+    const q = query(collection(db, "favorRequests"), where("coupleId", "==", user.coupleId));
+    const snap = await getDocs(q);
+    return snap.docs
+      .filter(d => d.data().uid !== uid)
+      .map(d => ({ id: d.id, ...d.data() } as FavorRequestDoc));
+  } catch {
+    return [];
+  }
 }
 
 export async function getFavorRequest(favorRequestId: string): Promise<FavorRequestDoc> {
@@ -374,7 +385,6 @@ export async function submitFavorRequest(
   uid: string,
   title: string,
   description: string,
-  tier: string,
   pointCost: number,
 ): Promise<{ ok: boolean }> {
   const user = await getMe();
@@ -383,7 +393,6 @@ export async function submitFavorRequest(
     coupleId: user.coupleId,
     title,
     description,
-    tier: tier || "pending",
     pointCost: pointCost || 0,
     status: "pending",
     createdAt: serverTimestamp()

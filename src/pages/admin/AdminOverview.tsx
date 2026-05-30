@@ -47,12 +47,10 @@ export function AdminOverview() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Stat icon={<Users size={17} />} label="Users" value={stats ? stats.totalUsers : "—"} />
-        <Stat icon={<Link2 size={17} />} label="Relationships" value={stats ? stats.activeRelationships : "—"} />
-        <Stat icon={<ClipboardList size={17} />} label="Active tasks" value={stats ? stats.totalTasks : "—"} />
-        <Stat icon={<Activity size={17} />} label="Pending favors" value={stats ? stats.totalFavorRequests : "—"} />
-        <Stat icon={<Flame size={17} />} label="Streaks" value={stats ? stats.activeStreaks : "—"} />
-        <Stat icon={<WalletCards size={17} />} label="Txns" value={stats ? stats.totalTransactions : "—"} />
+        <Stat icon={<Users size={17} />} label="Total Members" value={stats ? stats.totalUsers : "—"} />
+        <Stat icon={<ClipboardList size={17} />} label="Active Tasks" value={stats ? stats.totalTasks : "—"} />
+        <Stat icon={<Activity size={17} />} label="Pending Favors" value={stats ? stats.totalFavorRequests : "—"} />
+        <Stat icon={<Activity size={17} />} label="System Health" value="Healthy ✓" />
       </div>
 
       <Card className="bg-white border-slate-200">

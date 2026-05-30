@@ -49,11 +49,11 @@ export function Dashboard() {
       </motion.div>
       {me.role === "admin" && <RoleBanner role={me.role} />}
       <div className="grid grid-cols-3 gap-3">
-        <Stat icon={<Coins className="text-amber-500" size={18} />} label="Balance" value={wallet.totalPoints ?? 0} tone="amber" />
-        <Stat icon={<Gift className="text-pink-500" size={18} />} label="Cap left" value={`${cap.used} used · ${cap.remaining} left`} tone="pink" />
+        <Stat icon={<Coins className="text-amber-500" size={18} />} label="Balance" value={wallet?.totalPoints ?? 0} tone="amber" />
+        <Stat icon={<Gift className="text-pink-500" size={18} />} label="Cap left" value={`${cap.used}/10 used · ${cap.remaining} left`} tone="pink" />
         <Stat icon={<Flame className="text-violet-500" size={18} />} label="Streak" value={streak?.current ?? 0} tone="violet" />
       </div>
-      <Card><CardHeader title="This month" subtitle={`${me?.partnerNickname || me?.nickname || "Your partner"} · redemption progress`} /><CapProgress used={wallet.monthlyRedeemed} cap={wallet.monthlyCap} /></Card>
+      <Card><CardHeader title="This month" subtitle={`${me?.partnerNickname || "Your partner"} · redemption progress`} /><CapProgress used={wallet.monthlyRedeemed} cap={10} /></Card>
       <div className="grid grid-cols-2 gap-3">
         <Link to="/dashboard/tasks" className="block"><Card className="p-4 hover:shadow-cute transition-shadow"><div className="flex items-center gap-2 mb-2"><ClipboardCheck size={16} className="text-rose-500" /><span className="text-xs font-bold text-rose-600 uppercase">Active</span></div><div className="font-display text-2xl font-extrabold text-rose-700">{active.length}</div><div className="text-[11px] text-gray-500">tasks</div></Card></Link>
         <Link to="/dashboard/tasks" className="block"><Card className="p-4 hover:shadow-cute transition-shadow"><div className="flex items-center gap-2 mb-2"><Check size={16} className="text-violet-500" /><span className="text-xs font-bold text-violet-600 uppercase">Reviews</span></div><div className="font-display text-2xl font-extrabold text-rose-700">{pending.length}</div><div className="text-[11px] text-gray-500">pending</div></Card></Link>
