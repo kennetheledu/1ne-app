@@ -23,7 +23,13 @@ export function Dashboard() {
   const notifications = useNotifications(me?.uid);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  if (!me || !wallet) return null;
+  if (!me || !wallet) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" />
+      </div>
+    );
+  }
   const cap = getMonthlyCapProgress(wallet);
 
   return (

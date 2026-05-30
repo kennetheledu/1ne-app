@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { Onboarding } from "./pages/Onboarding";
 import { Auth } from "./pages/Auth";
@@ -18,7 +19,7 @@ import { AdminTasks } from "./pages/admin/AdminTasks";
 import { AdminLogs } from "./pages/admin/AdminLogs";
 import { AdminAnalytics } from "./pages/admin/AdminAnalytics";
 import { AdminSystem } from "./pages/admin/AdminSystem";
-import { getMe } from "./lib/firebase";
+import { getMe, auth } from "./lib/firebase";
 import type { UserDoc } from "./lib/firebaseTypes";
 
 const ONBOARD_KEY = "1ne.onboarded.v1";
@@ -56,20 +57,24 @@ function RoleGate({ role, children }: { role: "user" | "admin"; children: ReactN
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchMe() {
-      try {
-        const data = await getMe();
-        setMe(data);
-      } catch (err) {
-        console.error("[RoleGate] Profile fetch error:", err);
-      } finally {
-        setLoading(false);
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const data = await getMe();
+          setMe(data);
+        } catch (err) {
+          console.error("[RoleGate] Profile fetch error:", err);
+          setMe(null);
+        }
+      } else {
+        setMe(null);
       }
-    }
-    fetchMe();
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
-  if (loading) return null;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" /></div>;
   if (!me) return <Navigate to="/auth" replace />;
   if (role === "admin" && me.role !== "admin") return <Navigate to="/dashboard" replace />;
   if (role === "user" && me.role === "admin") return <Navigate to="/dashboard/admin" replace />;
@@ -84,22 +89,22 @@ function AppRoutes() {
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchMe() {
-      if (!user) {
-        setProfileLoading(false);
-        return;
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        try {
+          const data = await getMe();
+          setMe(data);
+        } catch (err) {
+          console.error("[AppRoutes] Error fetching profile:", err);
+          setMe(null);
+        }
+      } else {
+        setMe(null);
       }
-      try {
-        const data = await getMe();
-        setMe(data);
-      } catch (err) {
-        console.error("[AppRoutes] Error fetching profile:", err);
-      } finally {
-        setProfileLoading(false);
-      }
-    }
-    fetchMe();
-  }, [user]);
+      setProfileLoading(false);
+    });
+    return () => unsub();
+  }, []);
 
   if (loading || profileLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" /></div>;
   if (!user && !onboarded && location.pathname === "/") return <Onboarding onFinish={finish} />;

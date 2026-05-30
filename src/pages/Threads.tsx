@@ -15,7 +15,13 @@ export function Threads() {
   const allTasks = useAllTasks(me?.uid);
   const threads = useThreads(me?.uid);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  if (!me) return null;
+  if (!me) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

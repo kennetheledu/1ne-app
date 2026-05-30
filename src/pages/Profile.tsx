@@ -6,7 +6,13 @@ import { useMe } from "../lib/useMe";
 
 export function Profile() {
   const me = useMe();
-  if (!me) return null;
+  if (!me) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-peach shadow-cute animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

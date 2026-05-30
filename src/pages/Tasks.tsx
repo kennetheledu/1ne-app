@@ -83,7 +83,7 @@ function TasksContent() {
   }, [me?.uid, me?.relationshipId, allTasks.length, active.length, pending.length]);
 
   if (!me) {
-    return <TaskSkeleton message="Loading task workspace..." />;
+    return <TaskSkeleton message="Syncing task session..." />;
   }
 
   const isAdmin = me.role === "admin";

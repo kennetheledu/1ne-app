@@ -27,7 +27,13 @@ export function Favors() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!me) return null;
+  if (!me) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" />
+      </div>
+    );
+  }
 
   const allFavors = getFavorRequests(me.uid);
   const toReview = getFavorRequestsToReview(me.uid);

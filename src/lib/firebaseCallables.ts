@@ -44,11 +44,11 @@ import type {
 // USER CALLABLES
 // ============================================================================
 
-export async function getMe(): Promise<UserDoc> {
+export async function getMe(): Promise<UserDoc | null> {
   const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("Not authenticated");
+  if (!uid) return null;
   const snap = await getDoc(doc(db, "users", uid));
-  if (!snap.exists()) throw new Error("User not found");
+  if (!snap.exists()) return null;
   return { uid: snap.id, ...snap.data() } as UserDoc;
 }
 

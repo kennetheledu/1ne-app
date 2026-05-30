@@ -17,7 +17,13 @@ export function Wallet() {
   const decayHistory = useDecayHistory(me?.uid, 12);
   const partner = useMemo(() => (me ? getPartner(me) : null), [me]);
 
-  if (!me || !wallet) return null;
+  if (!me || !wallet) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" />
+      </div>
+    );
+  }
   const adminLocked = me.role === "admin";
   const cap = getMonthlyCapProgress(wallet);
 
