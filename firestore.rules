@@ -32,12 +32,23 @@ service cloud.firestore {
     }
     
     match /tasks/{taskId} {
-      allow read, write: if isAuth() && sameCouple(resource.data.coupleId);
+      allow read, write: if request.auth != null && (
+        resource.data.assignedTo == request.auth.uid ||
+        (resource.data.coupleId != null && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid))
+           .data.coupleId == resource.data.coupleId)
+      );
       allow create: if isAuth();
     }
     
     match /taskSubmissions/{subId} {
-      allow read, write: if isAuth() && sameCouple(resource.data.coupleId);
+      allow read, write: if request.auth != null && (
+        resource.data.submittedBy == request.auth.uid ||
+        resource.data.assignedPartner == request.auth.uid ||
+        (resource.data.coupleId != null && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid))
+           .data.coupleId == resource.data.coupleId)
+      );
       allow create: if isAuth();
     }
     
@@ -47,7 +58,12 @@ service cloud.firestore {
     }
     
     match /favorRequests/{reqId} {
-      allow read, write: if isAuth() && sameCouple(resource.data.coupleId);
+      allow read, write: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        (resource.data.coupleId != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid))
+           .data.coupleId == resource.data.coupleId)
+      );
       allow create: if isAuth();
       
       match /thread/{msgId} {

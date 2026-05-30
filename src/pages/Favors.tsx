@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, MessageCircle, X } from "lucide-react";
+import { Plus, MessageCircle, X, AlertTriangle } from "lucide-react";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -18,13 +19,21 @@ import {
 } from "../lib/firebase";
 
 export function Favors() {
+  return (
+    <ErrorBoundary fallback={(error) => <FavorError error={error} />}>
+      <FavorsContent />
+    </ErrorBoundary>
+  );
+}
+
+function FavorsContent() {
   const me = useMe();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedTier, setSelectedTier] = useState<FavorTier>(2);
   const [pointCost, setPointCost] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!me) {
@@ -35,9 +44,35 @@ export function Favors() {
     );
   }
 
-  const allFavors = getFavorRequests(me.uid);
-  const toReview = getFavorRequestsToReview(me.uid);
-  const active = allFavors.filter((f) => f.status === "pending_review" || f.status === "countered");
+  const [allFavors, setAllFavors] = useState<FavorRequestDoc[]>([]);
+  const [toReview, setToReview] = useState<FavorRequestDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      if (!me) return;
+      try {
+        const [all, review] = await Promise.all([
+          getFavorRequests(me.uid),
+          getFavorRequestsToReview(me.uid)
+        ]);
+        setAllFavors(all || []);
+        setToReview(review || []);
+      } catch (err) {
+        console.error("[Favors] Load error:", err);
+        setError("Failed to load favors. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [me]);
+
+  const active = (allFavors || []).filter(
+    (f) => f && (f.status === "pending_review" || f.status === "countered")
+  );
+
+  if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><div className="w-12 h-12 rounded-2xl gradient-rose shadow-cute animate-pulse" /></div>;
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -53,12 +88,15 @@ export function Favors() {
     setBusy(true);
     setError(null);
     try {
-      submitFavorRequest(me.uid, title, description, selectedTier, cost);
+      await submitFavorRequest(me.uid, title, description, selectedTier, cost);
       setTitle("");
       setDescription("");
       setPointCost("");
       setSelectedTier(2);
       setShowForm(false);
+      // Refresh the list
+      const all = await getFavorRequests(me.uid);
+      setAllFavors(all || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit");
     } finally {
@@ -192,14 +230,30 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
     expired: "text-gray-500",
   };
 
-  const negotiations = getNegotiationsFor(request.id);
-  const last = negotiations[negotiations.length - 1];
+  const [negotiations, setNegotiations] = useState<NegotiationDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetch() {
+      try {
+        const data = await getNegotiationsFor(request.id);
+        setNegotiations(data || []);
+      } catch (err) {
+        console.error("[FavorCard] Error fetching negotiations:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetch();
+  }, [request.id]);
+
+  const last = negotiations && negotiations.length > 0 ? negotiations[negotiations.length - 1] : null;
   const summary = last
     ? last.action === "submit"
       ? `Suggested tier ${last.tier} for ${last.pointCost} pts`
       : last.action === "counter"
       ? `Countered to tier ${last.tier} for ${last.pointCost} pts`
-      : last.action === "accept"
+      : last.action === "accept" || request.status === "accepted"
       ? `Accepted at ${last.pointCost} pts`
       : last.action === "reject"
       ? `Rejected${last.note ? `: ${last.note}` : ""}`
@@ -212,7 +266,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
 
   const handleAcceptCounter = async () => {
     try {
-      respondToCounter(meUid, request.id, "accept");
+      await respondToCounter(meUid, request.id, "accept");
     } catch (err) {
       console.error(err);
     }
@@ -220,7 +274,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
 
   const handleWithdrawCounter = async () => {
     try {
-      respondToCounter(meUid, request.id, "withdraw");
+      await respondToCounter(meUid, request.id, "withdraw");
     } catch (err) {
       console.error(err);
     }
@@ -233,7 +287,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
           <div className="font-semibold text-gray-800">{request.title}</div>
           <div className="text-xs text-gray-600 mt-0.5">{request.description}</div>
           <div className="text-xs text-rose-600 font-semibold mt-1">Round {request.currentRound} / {request.maxRounds}</div>
-          <div className="text-xs text-gray-500 mt-1">{summary}</div>
+          <div className="text-xs text-gray-500 mt-1">{loading ? "Loading details..." : summary}</div>
         </div>
         <div className={`shrink-0 text-right text-xs font-semibold ${statusColors[request.status]}`}>
           {statusLabels[request.status]}
@@ -269,7 +323,7 @@ function FavorReviewCard({ request, meUid }: { request: FavorRequestDoc; meUid: 
   const handleAccept = async () => {
     setBusy(true);
     try {
-      respondToFavorRequest(meUid, request.id, "accept");
+      await respondToFavorRequest(meUid, request.id, "accept");
     } catch (err) {
       console.error(err);
     } finally {
@@ -282,7 +336,7 @@ function FavorReviewCard({ request, meUid }: { request: FavorRequestDoc; meUid: 
     if (isNaN(cost) || cost <= 0) return;
     setBusy(true);
     try {
-      respondToFavorRequest(meUid, request.id, "counter", selectedTier, cost);
+      await respondToFavorRequest(meUid, request.id, "counter", selectedTier, cost);
     } catch (err) {
       console.error(err);
     } finally {
@@ -294,7 +348,7 @@ function FavorReviewCard({ request, meUid }: { request: FavorRequestDoc; meUid: 
     if (!rejectNote.trim()) return;
     setBusy(true);
     try {
-      respondToFavorRequest(meUid, request.id, "reject", undefined, undefined, rejectNote);
+      await respondToFavorRequest(meUid, request.id, "reject", undefined, undefined, rejectNote);
     } catch (err) {
       console.error(err);
     } finally {
@@ -389,5 +443,17 @@ function FavorReviewCard({ request, meUid }: { request: FavorRequestDoc; meUid: 
         </div>
       )}
     </div>
+  );
+}
+
+function FavorError({ error }: { error: Error }) {
+  return (
+    <Card className="border-rose-200 bg-rose-50/80">
+      <div className="text-center py-8">
+        <AlertTriangle className="mx-auto mb-2 text-rose-500" size={28} />
+        <div className="font-display font-extrabold text-rose-700">Favor page error</div>
+        <p className="text-sm text-rose-600 mt-2">{error.message}</p>
+      </div>
+    </Card>
   );
 }
