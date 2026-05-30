@@ -91,7 +91,7 @@ function FavorsContent() {
     setError(null);
     try {
       await submitFavorRequest(me.uid, title, description, selectedTier, cost);
-      setTitle("");
+      setTitle(""); 
       setDescription("");
       setPointCost("");
       setSelectedTier(2);
@@ -256,7 +256,7 @@ function FavorCard({ request, meUid }: { request: FavorRequestDoc; meUid: string
       ? `Suggested tier ${last.tier} for ${last.pointCost} pts`
       : last.action === "counter"
       ? `Countered to tier ${last.tier} for ${last.pointCost} pts`
-      : last.action === "accept" || request.status === "accepted"
+      : last.action === "accept" || request.status === "accepted" || request.status === "agreed"
       ? `Accepted at ${last.pointCost} pts`
       : last.action === "reject"
       ? `Rejected${last.note ? `: ${last.note}` : ""}`

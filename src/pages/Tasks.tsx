@@ -18,6 +18,7 @@ import {
   getPartner,
   rejectTaskSubmission,
   revealSurpriseTask,
+  archiveTaskViaAdmin,
   sendThreadMessage,
   submitTaskCompletion,
   toggleReaction,

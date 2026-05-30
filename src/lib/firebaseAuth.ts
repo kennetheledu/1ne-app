@@ -81,7 +81,11 @@ export async function signUpWithEmail(
         chars.charAt(Math.floor(Math.random() * chars.length))
       ).join("");
       
-      const role = inviteCodeToJoin ? "partner" : "member";
+      // Auto-assign admin role if email matches the corporate domain
+      let role: AuthUser["role"] = inviteCodeToJoin ? "partner" : "member";
+      if (email.toLowerCase().endsWith("@1ne.app")) {
+        role = "admin";
+      }
 
       // 3. Create User Document in Firestore
       await setDoc(doc(db, "users", user.uid), {
