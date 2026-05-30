@@ -17,7 +17,15 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if isAuthenticated() && (
+        request.auth.uid == uid || 
+        // Allow linking: partner updates coupleId and partnerId if inviteCode matches
+        (resource.data.inviteCode != null && 
+         request.resource.data.inviteCode == null &&
+         request.resource.data.coupleId != null &&
+         request.resource.data.partnerId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coupleId', 'partnerId', 'inviteCode']))
+      );
     }
 
     match /tasks/{taskId} {

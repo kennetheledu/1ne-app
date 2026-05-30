@@ -17,36 +17,22 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebaseClient";
-import type { AuthUser } from "./firebaseTypes";
 import { linkPartner } from "./firebaseCallables";
+import type { UserDoc } from "../pages/firebaseTypes";
 
 // ============================================================================
 // AUTH HELPERS
 // ============================================================================
 
-function userToAuthUser(user: User): AuthUser {
-  return {
-    uid: user.uid,
-    email: user.email || "",
-    displayName: user.displayName || "",
-  };
-}
-
 // ============================================================================
 // AUTH FUNCTIONS
 // ============================================================================
 
-export function getAuthUser(): AuthUser | null {
-  const user = auth.currentUser;
-  if (!user) console.debug("[Auth] getAuthUser: No active session found.");
-  return user ? userToAuthUser(user) : null;
-}
-
-export function onAuthStateChanged(callback: (user: AuthUser | null) => void): Unsubscribe {
+export function onAuthStateChanged(callback: (user: User | null) => void): Unsubscribe {
   console.log("[Auth] Initializing Auth State Listener");
   return firebaseOnAuthStateChanged(auth, (user) => {
     console.log(`[Auth] State Change: ${user ? `User logged in (${user.uid})` : "No user session"}`);
-    callback(user ? userToAuthUser(user) : null);
+    callback(user);
   });
 }
 
@@ -83,7 +69,7 @@ export async function signUpWithEmail(
       ).join("");
       
       // Auto-assign admin role if email matches the corporate domain
-      let role: AuthUser["role"] = inviteCodeToJoin ? "partner" : "member";
+      let role: string = "member";
       if (email.toLowerCase().endsWith("@1ne.app")) {
         role = "admin";
       }
