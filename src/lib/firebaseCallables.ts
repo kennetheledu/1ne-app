@@ -653,12 +653,32 @@ export async function respondToCounter(
 }
 
 export async function getAdminStats(): Promise<any> {
-  const [u, t, f] = await Promise.all([
-    getDocs(collection(db, "users")),
-    getDocs(collection(db, "tasks")),
-    getDocs(collection(db, "favorRequests"))
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Not authenticated");
+  const userDoc = await getDoc(doc(db, "users", uid));
+  const coupleId = userDoc.data()?.coupleId;
+  
+  const [usersSnap, tasksSnap, favorsSnap] = await Promise.all([
+    coupleId 
+      ? getDocs(query(collection(db, "users"), 
+          where("coupleId", "==", coupleId)))
+      : getDocs(query(collection(db, "users"), 
+          where("uid", "==", uid))),
+    coupleId
+      ? getDocs(query(collection(db, "tasks"), 
+          where("coupleId", "==", coupleId)))
+      : Promise.resolve({ size: 0 } as any),
+    coupleId  
+      ? getDocs(query(collection(db, "favorRequests"), 
+          where("coupleId", "==", coupleId)))
+      : Promise.resolve({ size: 0 } as any),
   ]);
-  return { users: u.size, tasks: t.size, favorRequests: f.size };
+  
+  return { 
+    totalUsers: usersSnap.size, 
+    totalTasks: tasksSnap.size, 
+    totalFavorRequests: favorsSnap.size 
+  };
 }
 
 export async function getAuditLogs(limit?: number): Promise<AuditLogDoc[]> {

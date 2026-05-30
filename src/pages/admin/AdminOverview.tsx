@@ -30,7 +30,7 @@ export function AdminOverview() {
     load();
   }, [me]);
 
-  if (!me || loading) {
+  if (!me || loading || !stats) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="w-12 h-12 rounded-2xl bg-slate-800 shadow-cute animate-pulse" />
@@ -47,12 +47,12 @@ export function AdminOverview() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Stat icon={<Users size={17} />} label="Users" value={stats.totalUsers} />
-        <Stat icon={<Link2 size={17} />} label="Relationships" value={stats.activeRelationships} />
-        <Stat icon={<ClipboardList size={17} />} label="Active tasks" value={stats.activeTasks} />
-        <Stat icon={<Activity size={17} />} label="Pending" value={stats.pendingApprovals} />
-        <Stat icon={<Flame size={17} />} label="Streaks" value={stats.activeStreaks} />
-        <Stat icon={<WalletCards size={17} />} label="Txns" value={stats.totalTransactions} />
+        <Stat icon={<Users size={17} />} label="Users" value={stats ? stats.totalUsers : "—"} />
+        <Stat icon={<Link2 size={17} />} label="Relationships" value={stats ? stats.activeRelationships : "—"} />
+        <Stat icon={<ClipboardList size={17} />} label="Active tasks" value={stats ? stats.totalTasks : "—"} />
+        <Stat icon={<Activity size={17} />} label="Pending favors" value={stats ? stats.totalFavorRequests : "—"} />
+        <Stat icon={<Flame size={17} />} label="Streaks" value={stats ? stats.activeStreaks : "—"} />
+        <Stat icon={<WalletCards size={17} />} label="Txns" value={stats ? stats.totalTransactions : "—"} />
       </div>
 
       <Card className="bg-white border-slate-200">
@@ -88,11 +88,11 @@ function RecentLogItem({ log }: { log: AuditLogDoc }) {
   );
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
   return (
     <Card className="p-4 bg-white border-slate-200">
       <div className="text-slate-500">{icon}</div>
-      <div className="font-display text-3xl font-extrabold text-slate-900 mt-2">{value}</div>
+      <div className="font-display text-3xl font-extrabold text-slate-900 mt-2">{value ?? "—"}</div>
       <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wide mt-1">{label}</div>
     </Card>
   );

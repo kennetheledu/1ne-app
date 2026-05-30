@@ -123,6 +123,8 @@ function AppRoutes() {
       <Route path="/dashboard/partner" element={<UserOnly><Layout><Partner /></Layout></UserOnly>} />
       <Route path="/dashboard/security" element={<UserOnly><Layout><Security /></Layout></UserOnly>} />
 
+      <Route path="/home" element={<Protected><Layout><Dashboard /></Layout></Protected>} />
+
       <Route path="/dashboard/admin" element={<AdminOnly><AdminLayout><AdminOverview /></AdminLayout></AdminOnly>} />
       <Route path="/dashboard/admin/tasks" element={<AdminOnly><AdminLayout><AdminTasks /></AdminLayout></AdminOnly>} />
       <Route path="/dashboard/admin/logs" element={<AdminOnly><AdminLayout><AdminLogs /></AdminLayout></AdminOnly>} />
