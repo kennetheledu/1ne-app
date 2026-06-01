@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Clock, Gift, Lock, MessageCircle, Sparkles, CheckCircle } from "lucide-react";
-import { Card, CardHeader } from "../components/ui/Card";
+import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { SlideToConfirm } from "../components/ui/SlideToConfirm";
+import { SlideToConfirm } from "../lib/SlideToConfirm";
 import { useMe } from "../lib/useMe";
 import { TaskDoc } from "./firebaseTypes";
 import { db } from "../lib/firebaseClient";
@@ -16,12 +16,15 @@ export function Tasks() {
   const me = useMe();
   const [tasks, setTasks] = useState<TaskDoc[]>([]);
   const [tab, setTab] = useState<"mine" | "review">("mine");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!me?.uid) return;
+    setLoading(true);
     const q = query(collection(db, "tasks"), where("assignedTo", "array-contains", me.uid));
     const unsub = onSnapshot(q, (snap) => {
       setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskDoc)));
+      setLoading(false);
     });
     return () => unsub();
   }, [me?.uid]);
@@ -35,6 +38,18 @@ export function Tasks() {
     return true;
   });
   const reviewTasks = tasks.filter(t => t.status === "pending" && t.assignedTo[0] !== me?.uid);
+
+  if (!me?.uid || loading) {
+    return (
+      <div className="p-4 min-h-screen flex items-center justify-center bg-lavender-50">
+        <div className="text-center px-6 py-10 rounded-[28px] bg-white shadow-soft border border-slate-100">
+          <Sparkles size={32} className="mx-auto mb-4 text-rose-300" />
+          <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading tasks...</p>
+          <p className="text-xs text-slate-400 mt-2">Hang tight while your assigned work is fetched.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4 font-nunito bg-lavender-50 min-h-screen pb-24">

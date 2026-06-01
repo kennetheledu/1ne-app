@@ -7,19 +7,19 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Toast } from "../components/ui/Toast";
 import { useMe } from "../lib/useMe";
+import { getStreakData } from "../lib/firebaseCallables";
 import {
   linkPartner,
   unlinkPartner,
   regenerateInviteCode,
-  getPartner,
-  getStreak,
   getUser,
 } from "../lib/firebase";
+import type { StreakDoc } from "../pages/firebaseTypes";
 
 export function Partner() {
   const me = useMe();
   const [partner, setPartner] = useState<any>(null);
-  const partnerStreak = partner ? getStreak(partner.uid) : null;
+  const [partnerStreak, setPartnerStreak] = useState<StreakDoc | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ kind: "success" | "error" | "info"; msg: string } | null>(null);
@@ -30,6 +30,27 @@ export function Partner() {
       getUser(me.partnerId).then(setPartner).catch(console.error);
     }
   }, [me?.partnerId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!partner?.uid) {
+      setPartnerStreak(null);
+      return;
+    }
+
+    getStreakData(partner.uid)
+      .then((streak) => {
+        if (active) setPartnerStreak(streak);
+      })
+      .catch((error) => {
+        console.error("[Partner] failed to load partner streak:", error);
+        if (active) setPartnerStreak(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [partner?.uid]);
 
   if (!me) {
     return (
@@ -43,7 +64,7 @@ export function Partner() {
     if (!code.trim() || !me) return;
     setBusy(true);
     try {
-      const { relationshipId } = await linkPartner(me.uid, code);
+      await linkPartner(me.uid, code);
       window.dispatchEvent(new Event("1ne:db-changed"));
       setToast({ kind: "success", msg: "Linked successfully! 💞" });
       setCode("");
@@ -189,16 +210,16 @@ export function Partner() {
                       <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Best</span>
                     </div>
                     <div className="font-display text-3xl font-extrabold text-amber-700">
-                      {partnerStreak.best}
+                        {partnerStreak.longest}
                     </div>
                     <div className="text-xs text-amber-600 mt-1">max streak</div>
                   </div>
                 </div>
                 <div className="mt-3 text-sm text-gray-600 border-t border-rose-100 pt-3">
-                  <div>Completed <span className="font-semibold text-rose-700">{partnerStreak.totalCompletions}</span> tasks total</div>
-                  {partnerStreak.lastCompletionDay && (
-                    <div className="text-xs text-gray-500 mt-1">Last completed on {new Date(partnerStreak.lastCompletionDay).toLocaleDateString()}</div>
-                  )}
+                      <div>Longest streak <span className="font-semibold text-rose-700">{partnerStreak.longest}</span> days</div>
+                      {partnerStreak.lastCompletionDate && (
+                        <div className="text-xs text-gray-500 mt-1">Last completed on {new Date(partnerStreak.lastCompletionDate).toLocaleDateString()}</div>
+                      )}
                 </div>
               </Card>
             )}

@@ -53,7 +53,7 @@ export function Dashboard() {
         <Stat icon={<Gift className="text-pink-500" size={18} />} label="Cap left" value={`${cap.used}/10 used · ${cap.remaining} left`} tone="pink" />
         <Stat icon={<Flame className="text-violet-500" size={18} />} label="Streak" value={streak?.current ?? 0} tone="violet" />
       </div>
-      <Card><CardHeader title="This month" subtitle={`${me?.partnerNickname || "Your partner"} · redemption progress`} /><CapProgress used={wallet.monthlyRedeemed} cap={10} /></Card>
+      <Card><CardHeader title="This month" subtitle={`${partner?.displayName || "Your partner"} · redemption progress`} /><CapProgress used={wallet.monthlyRedeemed} cap={10} /></Card>
       <div className="grid grid-cols-2 gap-3">
         <Link to="/dashboard/tasks" className="block"><Card className="p-4 hover:shadow-cute transition-shadow"><div className="flex items-center gap-2 mb-2"><ClipboardCheck size={16} className="text-rose-500" /><span className="text-xs font-bold text-rose-600 uppercase">Active</span></div><div className="font-display text-2xl font-extrabold text-rose-700">{active.length}</div><div className="text-[11px] text-gray-500">tasks</div></Card></Link>
         <Link to="/dashboard/tasks" className="block"><Card className="p-4 hover:shadow-cute transition-shadow"><div className="flex items-center gap-2 mb-2"><Check size={16} className="text-violet-500" /><span className="text-xs font-bold text-violet-600 uppercase">Reviews</span></div><div className="font-display text-2xl font-extrabold text-rose-700">{pending.length}</div><div className="text-[11px] text-gray-500">pending</div></Card></Link>
@@ -67,7 +67,7 @@ export function Dashboard() {
               <div className="w-12 h-12 rounded-2xl gradient-peach flex items-center justify-center font-display font-extrabold text-rose-700 text-lg">{partner.displayName.charAt(0).toUpperCase()}</div>
               <div className="flex-1 min-w-0">
                 <div className="font-display font-bold text-rose-700 truncate">{partner.displayName}</div>
-                <div className="text-xs text-gray-500 truncate">{partner.email}</div>
+                <div className="text-xs text-gray-500 truncate">Partner linked</div>
               </div>
               <div className="px-2.5 py-1 rounded-full bg-mint-100 text-emerald-700 text-xs font-bold">Linked</div>
             </div>
@@ -109,7 +109,7 @@ export function Dashboard() {
   );
 }
 
-function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: "amber" | "pink" | "violet" }) {
+function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: "amber" | "pink" | "violet" }) {
   const t = { amber: "from-amber-100 to-peach-100 text-amber-700", pink: "from-pink-100 to-rose-100 text-rose-700", violet: "from-lavender-100 to-lavender-200 text-violet-700" }[tone];
   return <div className={`rounded-2xl bg-gradient-to-br ${t} p-3 border border-white shadow-sm`}><div className="flex items-center justify-between mb-1">{icon}</div><div className="font-display font-extrabold text-xl leading-none">{value}</div><div className="text-[11px] font-bold uppercase tracking-wide mt-1 opacity-80">{label}</div></div>;
 }

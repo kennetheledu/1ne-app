@@ -1,11 +1,11 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMe } from "../lib/useMe";
 import { getWalletData } from "../lib/firebaseCallables";
 import { db } from "../lib/firebaseClient";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { Card } from "../components/ui/Card";
-import { WalletDoc, TaskDoc } from "./firebaseTypes";
+import { WalletDoc, TaskDoc } from "../pages/firebaseTypes";
 import { CheckCircle, Clock, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -15,22 +15,44 @@ export function Home() {
   const [wallet, setWallet] = useState<WalletDoc | null>(null);
   const [activeTasks, setActiveTasks] = useState<number>(0);
   const [pendingApprovals, setPendingApprovals] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!me?.uid) return;
-    getWalletData(me.uid).then(setWallet);
+    setLoading(true);
+    getWalletData(me.uid)
+      .then(setWallet)
+      .catch((error) => {
+        console.error("Failed to load wallet data:", error);
+        setWallet(null);
+      });
 
     const tasksQuery = query(collection(db, "tasks"), where("assignedTo", "array-contains", me.uid));
     const unsubTasks = onSnapshot(tasksQuery, (snap) => {
       const all = snap.docs.map(d => d.data() as TaskDoc);
       setActiveTasks(all.filter(t => t.status === 'active' || t.status === 'rejected').length);
       setPendingApprovals(all.filter(t => t.status === 'pending' && t.assignedTo[0] !== me.uid).length);
+      setLoading(false);
     });
 
     return () => unsubTasks();
   }, [me?.uid]);
 
   const capUsed = wallet?.monthlyRedeemed || 0;
+
+  if (!me?.uid || loading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center bg-lavender-50">
+        <div className="text-center px-6 py-10 rounded-[28px] bg-white shadow-soft border border-slate-100">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-rose-50 flex items-center justify-center">
+            <Clock size={24} className="text-rose-400" />
+          </div>
+          <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading dashboard…</p>
+          <p className="text-xs text-slate-400 mt-2">Preparing your wallet and tasks overview.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 font-nunito bg-lavender-50 min-h-screen pb-24">

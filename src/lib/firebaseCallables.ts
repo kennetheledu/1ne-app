@@ -15,7 +15,7 @@ import {
   arrayUnion,
   arrayRemove,
   deleteDoc,
-  limit,
+  limit as firestoreLimit,
   Timestamp,
   writeBatch
 } from "firebase/firestore";
@@ -49,8 +49,13 @@ export async function getMe(): Promise<UserDoc | null> {
 // ============================================================================
 
 export async function adminCreateTask(data: Partial<TaskDoc>, adminName: string) {
+  if (!data || !data.title) throw new Error("Missing task data or title");
+  if (!data.assignedTo || !Array.isArray(data.assignedTo) || data.assignedTo.length === 0) {
+    throw new Error("adminCreateTask requires a non-empty assignedTo array");
+  }
+
   // If assigned to multiple/both, we create individual docs for independent progress
-  const promises = data.assignedTo?.map(async (uid) => {
+  const promises = data.assignedTo.map(async (uid) => {
     let expiry = data.expiresAt;
     
     // Auto-calculate midnight for Daily tasks if not provided
@@ -87,12 +92,14 @@ async function logTransaction(uid: string, coupleId: string, type: "earned" | "s
 }
 
 export async function adminArchiveTask(taskId: string, adminName: string) {
+  if (!taskId) throw new Error("adminArchiveTask requires taskId");
   const taskRef = doc(db, "tasks", taskId);
   await updateDoc(taskRef, { status: "archived" });
   await logSystemEvent(`Task archived by admin`, adminName);
 }
 
 export async function adminDeleteTask(taskId: string, adminName: string) {
+  if (!taskId) throw new Error("adminDeleteTask requires taskId");
   const taskRef = doc(db, "tasks", taskId);
   await deleteDoc(taskRef);
   await logSystemEvent(`Task deleted by admin`, adminName);
@@ -105,9 +112,11 @@ export async function adminGetMembers(): Promise<UserDoc[]> {
 }
 
 export async function getWalletData(uid: string): Promise<WalletDoc> {
+  if (!uid) throw new Error("getWalletData requires uid");
   const snapUser = await getDoc(doc(db, "users", uid));
+  if (!snapUser.exists()) throw new Error("User not found");
   const userData = snapUser.data() as UserDoc;
-  
+
   if (userData?.role === 'admin') {
     return { uid, totalPoints: 0, monthlyRedeemed: 0, lastDecayMonth: '' };
   }
@@ -140,7 +149,7 @@ export async function getWalletData(uid: string): Promise<WalletDoc> {
     const decayedAmount = data.totalPoints - newBalance;
     await updateDoc(walletRef, update);
     if (decayedAmount > 0) {
-      await logTransaction(uid, data.coupleId || "", "decayed", decayedAmount, `Monthly 20% decay`);
+      await logTransaction(uid, userData.coupleId || "", "decayed", decayedAmount, `Monthly 20% decay`);
     }
     await logSystemEvent(`Monthly decay applied to balance for ${uid}`, "System");
     return { ...data, ...update };
@@ -150,19 +159,23 @@ export async function getWalletData(uid: string): Promise<WalletDoc> {
 }
 
 export async function revealTask(taskId: string) {
+  if (!taskId) throw new Error("revealTask requires taskId");
   await updateDoc(doc(db, "tasks", taskId), { revealed: true });
 }
 
 export async function submitTask(taskId: string, memberUid: string, memberName: string) {
-  await runTransaction(db, async (t) => {
+  if (!taskId) throw new Error("submitTask requires taskId");
+  // Use a transaction-safe pattern: create any new docs via a deterministic ref
+  const result = await runTransaction(db, async (t) => {
     const taskRef = doc(db, "tasks", taskId);
     const taskSnap = await t.get(taskRef);
+    if (!taskSnap.exists()) throw new Error("Task not found");
     const task = taskSnap.data() as TaskDoc;
 
-    // Reuse or create thread
     let threadId = task.threadId;
     if (!threadId) {
-      const threadRef = await addDoc(collection(db, "threads"), {
+      const threadRef = doc(collection(db, "threads"));
+      t.set(threadRef, {
         type: "task",
         referenceId: taskId,
         coupleId: task.coupleId,
@@ -176,23 +189,28 @@ export async function submitTask(taskId: string, memberUid: string, memberName: 
     }
 
     t.update(taskRef, { status: "pending", threadId });
-    await logSystemEvent(`Task "${task.title}" submitted by ${memberName}`, memberName);
+
+    return { threadId, taskTitle: task.title };
   });
+
+  // Post-transaction side-effects (non-transactional writes)
+  await logSystemEvent(`Task "${result.taskTitle}" submitted by ${memberName || memberUid}`, memberName || memberUid);
 }
 
 export async function approveTask(taskId: string, approverName: string) {
-  await runTransaction(db, async (t) => {
+  if (!taskId) throw new Error("approveTask requires taskId");
+  // Perform core updates in a transaction and return metadata for post-transaction logs
+  const meta = await runTransaction(db, async (t) => {
     const taskRef = doc(db, "tasks", taskId);
     const taskSnap = await t.get(taskRef);
+    if (!taskSnap.exists()) throw new Error("Task not found");
     const task = taskSnap.data() as TaskDoc;
-    
-    // Credit points to owner (simple assume 1 assign for now)
-    const uid = task.assignedTo[0];
+
+    const uid = task.assignedTo?.[0];
+    if (!uid) throw new Error("approveTask: task has no assigned user");
     const walletRef = doc(db, "wallets", uid);
     t.update(walletRef, { totalPoints: increment(task.pointReward) });
     t.update(taskRef, { status: "approved" });
-    
-    await logTransaction(uid, task.coupleId, "earned", task.pointReward, `Completed task: ${task.title}`);
 
     // Update Streak
     const streakRef = doc(db, "streaks", uid);
@@ -220,12 +238,20 @@ export async function approveTask(taskId: string, approverName: string) {
     if (task.threadId) {
       t.update(doc(db, "threads", task.threadId), { title: `${task.title} (Approved)` });
     }
-    await logSystemEvent(`Task "${task.title}" approved by ${approverName}`, approverName);
+
+    return { uid, coupleId: task.coupleId, pointReward: task.pointReward, title: task.title };
   });
+
+  // Post-transaction logging (non-transactional)
+  if (meta.uid) {
+    await logTransaction(meta.uid, meta.coupleId, "earned", meta.pointReward, `Completed task: ${meta.title}`);
+  }
+  await logSystemEvent(`Task "${meta.title}" approved by ${approverName}`, approverName);
 }
 
 export async function getStreakData(uid: string): Promise<StreakDoc | null> {
   try {
+    if (!uid) throw new Error("getStreakData requires uid");
     const snap = await getDoc(doc(db, "streaks", uid));
     return snap.exists() ? snap.data() as StreakDoc : null;
   } catch (e) {
@@ -234,7 +260,9 @@ export async function getStreakData(uid: string): Promise<StreakDoc | null> {
 }
 
 export async function linkPartner(uid: string, inviteCode: string): Promise<{ ok: boolean; relationshipId: string }> {
-  const q = query(collection(db, "users"), where("inviteCode", "==", inviteCode), limit(1));
+  if (!uid) throw new Error("linkPartner requires uid");
+  if (!inviteCode) throw new Error("linkPartner requires inviteCode");
+  const q = query(collection(db, "users"), where("inviteCode", "==", inviteCode), firestoreLimit(1));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error("Invalid invite code");
 
@@ -254,8 +282,10 @@ export async function linkPartner(uid: string, inviteCode: string): Promise<{ ok
 }
 
 export async function rejectTask(taskId: string, rejectorName: string) {
+  if (!taskId) throw new Error("rejectTask requires taskId");
   const taskRef = doc(db, "tasks", taskId);
   const taskSnap = await getDoc(taskRef);
+  if (!taskSnap.exists()) throw new Error("Task not found");
   const task = taskSnap.data() as TaskDoc;
 
   await updateDoc(taskRef, { status: "active" });
@@ -270,6 +300,10 @@ export async function rejectTask(taskId: string, rejectorName: string) {
 // ============================================================================
 
 export async function startFavorRequest(data: Partial<FavorDoc>, requesterName: string) {
+  if (!data || !data.fromUid || !data.toUid || !data.title || !data.coupleId) {
+    throw new Error("startFavorRequest requires fromUid, toUid, title and coupleId");
+  }
+
   const threadRef = await addDoc(collection(db, "threads"), {
     type: "favor",
     coupleId: data.coupleId,
@@ -290,9 +324,13 @@ export async function startFavorRequest(data: Partial<FavorDoc>, requesterName: 
 }
 
 export async function counterFavor(favorId: string, newCost: number, actorName: string) {
+  if (!favorId) throw new Error("counterFavor requires favorId");
+  if (typeof newCost !== 'number' || newCost < 0) throw new Error("counterFavor requires a valid newCost");
+
   await runTransaction(db, async (t) => {
     const favorRef = doc(db, "favorRequests", favorId);
     const favorSnap = await t.get(favorRef);
+    if (!favorSnap.exists()) throw new Error("Favor not found");
     const favor = favorSnap.data() as FavorDoc;
 
     if (favor.currentRound >= 3) throw new Error("Maximum negotiation rounds reached (3-strike rule)");
@@ -301,20 +339,28 @@ export async function counterFavor(favorId: string, newCost: number, actorName: 
     t.update(favorRef, { proposedCost: newCost, currentRound: nextRound, status: "negotiating" });
     t.update(doc(db, "threads", favor.threadId), { title: `Favor: ${favor.title} (Round ${nextRound} of 3)` });
   });
+
+  // Post-transaction logging
+  await logSystemEvent(`Favor ${favorId} countered to ${newCost} by ${actorName}`, actorName);
 }
 
 export async function approveFavor(favorId: string, approverName: string) {
-  await runTransaction(db, async (t) => {
+  if (!favorId) throw new Error("approveFavor requires favorId");
+  const meta = await runTransaction(db, async (t) => {
     const favorRef = doc(db, "favorRequests", favorId);
     const favorSnap = await t.get(favorRef);
+    if (!favorSnap.exists()) throw new Error("Favor not found");
     const favor = favorSnap.data() as FavorDoc;
+
+    if (typeof favor.proposedCost !== 'number') throw new Error("Favor missing proposedCost");
 
     const walletRef = doc(db, "wallets", favor.fromUid);
     const walletSnap = await t.get(walletRef);
+    if (!walletSnap.exists()) throw new Error("Wallet not found");
     const wallet = walletSnap.data() as WalletDoc;
 
     if (wallet.totalPoints < favor.proposedCost) throw new Error("Partner has insufficient points");
-    if (wallet.monthlyRedeemed + favor.proposedCost > 100) throw new Error("Partner's monthly cap reached");
+    if ((wallet.monthlyRedeemed || 0) + favor.proposedCost > 100) throw new Error("Partner's monthly cap reached");
 
     t.update(walletRef, { 
       totalPoints: increment(-favor.proposedCost),
@@ -324,15 +370,19 @@ export async function approveFavor(favorId: string, approverName: string) {
     t.update(favorRef, { status: "agreed", resolvedAt: serverTimestamp() });
     t.update(doc(db, "threads", favor.threadId), { title: `Favor: ${favor.title} (Approved)` });
     
-    await logTransaction(favor.fromUid, favor.coupleId, "spent", favor.proposedCost, `Favor granted: ${favor.title}`);
-
-    await logSystemEvent(`Favor "${favor.title}" approved by ${approverName}`, approverName);
+    return { fromUid: favor.fromUid, coupleId: favor.coupleId, proposedCost: favor.proposedCost, title: favor.title };
   });
+
+  // Post-transaction logging
+  await logTransaction(meta.fromUid, meta.coupleId, "spent", meta.proposedCost, `Favor granted: ${meta.title}`);
+  await logSystemEvent(`Favor "${meta.title}" approved by ${approverName}`, approverName);
 }
 
 export async function rejectFavor(favorId: string, rejectorName: string) {
+  if (!favorId) throw new Error("rejectFavor requires favorId");
   const favorRef = doc(db, "favorRequests", favorId);
   const favorSnap = await getDoc(favorRef);
+  if (!favorSnap.exists()) throw new Error("Favor not found");
   const favor = favorSnap.data() as FavorDoc;
 
   await updateDoc(favorRef, { status: "rejected", resolvedAt: serverTimestamp() });
@@ -341,6 +391,7 @@ export async function rejectFavor(favorId: string, rejectorName: string) {
 }
 
 export async function getTransactions(uid: string): Promise<TransactionDoc[]> {
+  if (!uid) throw new Error("getTransactions requires uid");
   const q = query(
     collection(db, "transactions"),
     where("uid", "==", uid),
@@ -353,14 +404,23 @@ export async function getTransactions(uid: string): Promise<TransactionDoc[]> {
 // THREAD/MESSAGING CALLABLES
 // ============================================================================
 
-export async function getThreads(uid: string): Promise<ThreadDoc[]> {
-  const user = await getMe();
+export async function getThreads(uid?: string): Promise<ThreadDoc[]> {
+  let user = null;
+  if (uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+    user = snap.exists() ? ({ uid: snap.id, ...snap.data() } as UserDoc) : null;
+  } else {
+    user = await getMe();
+  }
+  if (!user || !user.coupleId) return [];
   const q = query(collection(db, "threads"), where("coupleId", "==", user.coupleId));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as ThreadDoc));
 }
 
 export async function updateNickname(uid: string, nickname: string, actorName: string) {
+  if (!uid) throw new Error("updateNickname requires uid");
+  if (typeof nickname !== 'string') throw new Error("updateNickname requires nickname string");
   const userRef = doc(db, "users", uid);
   await updateDoc(userRef, { nickname });
   await logSystemEvent(`${actorName} updated their nickname to "${nickname}"`, actorName);
@@ -372,6 +432,7 @@ export async function getPartnerData(uid: string): Promise<UserDoc | null> {
 }
 
 export async function getThreadMessages(threadId: string): Promise<MessageDoc[]> {
+  if (!threadId) throw new Error("getThreadMessages requires threadId");
   const q = query(
     collection(db, "threads", threadId, "messages"),
     orderBy("timestamp", "asc")
@@ -385,6 +446,9 @@ export async function sendThreadMessage(
   threadId: string,
   text: string,
 ): Promise<{ id: string; ok: boolean }> {
+  if (!uid) throw new Error("sendThreadMessage requires uid");
+  if (!threadId) throw new Error("sendThreadMessage requires threadId");
+  if (typeof text !== 'string' || text.trim() === '') throw new Error("sendThreadMessage requires non-empty text");
   const ref = await addDoc(collection(db, "threads", threadId, "messages"), {
     senderUid: uid,
     text,
@@ -399,9 +463,14 @@ export async function toggleThreadReaction(
   messageId: string,
   reaction: string,
 ): Promise<{ ok: boolean }> {
+  if (!uid) throw new Error("toggleThreadReaction requires uid");
+  if (!threadId) throw new Error("toggleThreadReaction requires threadId");
+  if (!messageId) throw new Error("toggleThreadReaction requires messageId");
+  if (!reaction) throw new Error("toggleThreadReaction requires reaction");
   const msgRef = doc(db, "threads", threadId, "messages", messageId);
   await runTransaction(db, async (t) => {
     const snap = await t.get(msgRef);
+    if (!snap.exists()) throw new Error("Message not found");
     const reactions = snap.data()?.reactions || {};
     const users: string[] = reactions[reaction] || [];
     
@@ -412,4 +481,44 @@ export async function toggleThreadReaction(
     }
   });
   return { ok: true };
+}
+
+// -------------------------
+// Compatibility wrappers
+// These adapt older/other module names used across the codebase
+// to the implementations above.
+// -------------------------
+
+export async function getWallet(uid: string) {
+  return getWalletData(uid);
+}
+
+export async function getTransactionsFor(uid: string, limit = 50) {
+  const all = await getTransactions(uid);
+  return Array.isArray(all) ? all.slice(0, limit) : [];
+}
+
+export async function getDecayHistoryFor(uid: string, count = 24) {
+  if (!uid) return [];
+  const q = query(
+    collection(db, "transactions"),
+    where("uid", "==", uid),
+    where("type", "==", "decayed"),
+    orderBy("timestamp", "desc"),
+    firestoreLimit(count)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getMonthlySnapshotsFor(uid: string, count = 12) {
+  if (!uid) return [];
+  const q = query(
+    collection(db, "monthlySnapshots"),
+    where("ownerUid", "==", uid),
+    orderBy("createdAt", "desc"),
+    firestoreLimit(count)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }

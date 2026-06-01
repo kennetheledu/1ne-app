@@ -111,7 +111,7 @@ export {
   respondToFavorRequest,
   respondToCounter,
   // Streak
-  getStreak,
+  getStreakData as getStreak,
   awardPoints,
   redeemPoints,
   updateStreak,

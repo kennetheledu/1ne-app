@@ -11,57 +11,93 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Wallets: allow owners to read; prevent clients from changing sensitive balance fields
     match /wallets/{uid} {
-      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      // Clients may write non-sensitive metadata, but may NOT write balance-related fields
+      allow create: if isAuthenticated() && request.auth.uid == uid
+        && !request.resource.data.keys().hasAny(['totalPoints', 'monthlyRedeemed', 'lastDecayMonth']);
+      allow update: if isAuthenticated() && request.auth.uid == uid
+        && !request.resource.data.keys().hasAny(['totalPoints', 'monthlyRedeemed', 'lastDecayMonth']);
+      allow delete: if false;
     }
 
     match /users/{uid} {
       allow read: if isAuthenticated();
+      // Allow owners to update only non-sensitive profile fields; admins can write anything.
       allow write: if isAuthenticated() && (
-        request.auth.uid == uid || 
-        // Allow linking: partner updates coupleId and partnerId if inviteCode matches
-        (resource.data.inviteCode != null && 
-         request.resource.data.inviteCode == null &&
-         request.resource.data.coupleId != null &&
-         request.resource.data.partnerId == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coupleId', 'partnerId', 'inviteCode']))
+        (request.auth.uid == uid && request.resource.data.keys().hasOnly(['nickname','displayName','photoURL','inviteCode','partnerId','coupleId']))
+        || isAdmin()
+        || (
+          // Allow linking: partner updates coupleId and partnerId if inviteCode matches existing resource
+          resource.data.inviteCode != null && 
+          request.resource.data.inviteCode == null &&
+          request.resource.data.coupleId != null &&
+          request.resource.data.partnerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coupleId', 'partnerId', 'inviteCode'])
+        )
       );
     }
 
     match /tasks/{taskId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      // Allow clients to create/update tasks but prevent clients from directly marking tasks approved.
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.resource.data.status != 'approved' || isAdmin());
+      allow delete: if isAdmin();
     }
 
     match /threads/{threadId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
       match /messages/{msgId} {
-        allow read, write: if isAuthenticated();
+        allow read: if isAuthenticated();
+        // Only allow message creation when senderUid matches authenticated user and payload is well-formed
+        allow create: if isAuthenticated()
+          && request.auth.uid == request.resource.data.senderUid
+          && request.resource.data.keys().hasOnly(['senderUid','text','timestamp']);
+        allow update, delete: if request.auth.uid == resource.data.senderUid || isAdmin();
       }
     }
 
     match /favorRequests/{favorId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      // Creation must be performed by the requester (fromUid). Updates allowed for participants or admin.
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.fromUid;
+      allow update: if isAuthenticated() && (
+        (request.resource.data.status in ['pending','negotiating','rejected','agreed'] && (request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid))
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
     match /notifications/{notifId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdmin());
     }
 
     match /auditLogs/{logId} {
       allow read: if isAuthenticated() && isAdmin();
-      allow write: if isAuthenticated();
+      // Only admins may write audit logs
+      allow write: if isAdmin();
     }
 
     match /transactions/{txId} {
       allow read: if isAuthenticated() && request.auth.uid == resource.data.uid;
-      allow write: if isAuthenticated();
+      // Clients may create transaction records but only for themselves and with a strict shape
+      allow create: if isAuthenticated()
+        && request.auth.uid == request.resource.data.uid
+        && request.resource.data.amount is number
+        && request.resource.data.type in ['earned','spent','decayed']
+        && request.resource.data.keys().hasOnly(['uid','coupleId','type','amount','reason','timestamp']);
+      allow update, delete: if isAdmin();
     }
 
     match /streaks/{uid} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == uid;
     }
   }
 }

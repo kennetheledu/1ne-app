@@ -3,7 +3,7 @@ import {
   getActiveTasks,
   getMyAchievements,
   getPendingApprovals,
-  getStreak,
+  getStreakData,
   getTasksForUser,
   type AchievementDoc,
   type StreakDoc,
@@ -44,7 +44,7 @@ export function usePendingApprovals(uid?: string | null) {
   return useDb<TaskSubmissionDoc[]>(() => uid ? getPendingApprovals(uid) : Promise.resolve([]), [], [uid]);
 }
 export function useStreak(uid?: string | null) {
-  return useDb<StreakDoc | null>(() => uid ? getStreak(uid) : Promise.resolve(null), null, [uid]);
+  return useDb<StreakDoc | null>(() => uid ? getStreakData(uid) : Promise.resolve(null), null, [uid]);
 }
 export function useMyAchievements(uid?: string | null) {
   return useDb<AchievementDoc[]>(() => uid ? getMyAchievements(uid) : Promise.resolve([]), [], [uid]);
